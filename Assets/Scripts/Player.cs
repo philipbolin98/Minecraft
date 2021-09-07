@@ -4,19 +4,19 @@ using UnityEngine;
 
 public class Player : MonoBehaviour{
 
-    public bool isGrounded;
-    public bool isSprinting;
+    private bool isGrounded;
+    private bool isSprinting;
 
     private Transform cam;
     private Planet planet;
 
-    public float walkSpeed = 3f;
-    public float sprintSpeed = 6f;
-    public float jumpForce = 5f;
-    public float gravity = -9.8f;
+    private float walkSpeed = 3f;
+    private float sprintSpeed = 6f;
+    private float jumpForce = 5f;
+    private float gravity = -9.8f;
 
-    public float mouseSensitivity;
-    public float playerWidth;
+    private float mouseSensitivity = 3f;
+    private float playerWidth = .25f;
     
     private float horizontal;
     private float vertical;
@@ -27,15 +27,15 @@ public class Player : MonoBehaviour{
     private Vector3 velocity;
     private Vector3 nextPosition;
 
-    public float verticalMomentum = 0;
-    public bool jumpRequest;
+    private float verticalMomentum = 0;
+    private bool jumpRequest = false;
 
     private void Start() {
 
         try {
 
             cam = GameObject.Find("Main Camera").transform;
-            planet = GameObject.Find("Planet").GetComponent<Planet>();
+            planet = UniverseData.currentPlanet;
 
             nextPosition = transform.position;
 

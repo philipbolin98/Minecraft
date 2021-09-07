@@ -6,6 +6,8 @@ public class VoxelData{
     public static readonly int PlanetSizeInChunks = 8;
     public static readonly int ViewDistanceInChunks = 2;
     public static readonly int TextureAtlasSizeInBlocks = 4;
+    public static readonly float TAU = 2 * Mathf.PI;
+
     public static int PlanetSizeInVoxels {
         get { return PlanetSizeInChunks * ChunkSize; }
     }

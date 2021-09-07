@@ -5,5 +5,6 @@ using UnityEngine;
 public class UniverseData {
 
     public static Planet currentPlanet;
+    public static Universe universe;
 
 }

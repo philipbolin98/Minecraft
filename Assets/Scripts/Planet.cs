@@ -3,36 +3,33 @@ using System.Collections.Generic;
 using UnityEngine;
 using Noise;
 
-public class Planet : MonoBehaviour{
+public class Planet{
 
-    public static readonly float TAU = 2 * Mathf.PI;
-
-    public int seed = 999;
-    public int seaLevel;
-
-    public Transform player;
-    public Vector3 spawnPosition;
+    public GameObject planetObject;
     OpenSimplex2S Noise4D;
 
-    public Material material;
-    public BlockType[] blockTypes;
+    public int seed;
+    public int seaLevel; 
 
     Chunk[,,] chunks = new Chunk[VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks];
     //List<Vector3> activeChunks = new List<Vector3>();
 
     public PlanetData planetData;
 
-    void Start(){
+    public Planet(int seed) {
 
         try {
 
-            Random.InitState(seed);
-
-            Noise4D = new OpenSimplex2S(seed);
-            spawnPosition = new Vector3(VoxelData.PlanetSizeInVoxels / 2, VoxelData.PlanetSizeInVoxels + 2f, VoxelData.PlanetSizeInVoxels / 2);
-
             UniverseData.currentPlanet = this;
-            planetData = SaveSystem.LoadPlanet("bruh", seed);
+
+            this.seed = seed;
+            Random.InitState(seed);
+            Noise4D = new OpenSimplex2S(seed);
+
+            planetObject = new GameObject("Planet " + seed);
+            planetObject.transform.SetParent(UniverseData.universe.transform);
+
+            planetData = SaveSystem.LoadPlanet(planetObject.name, seed);
             planetData.LoadAllChunkData();
 
             if (planetData.initialLoad) {
@@ -41,23 +38,8 @@ public class Planet : MonoBehaviour{
 
             GeneratePlanet();
 
-            player.position = spawnPosition;
-
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.Start: " + e.Message);
-        }
-    }
-
-    private void Update() {
-
-        try {
-
-            if (Input.GetKeyDown(KeyCode.F1)) {
-                SaveSystem.SavePlanet(planetData);
-            }
-
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.Update: " + e.Message);
         }
     }
 
@@ -67,8 +49,6 @@ public class Planet : MonoBehaviour{
     public void GeneratePlanet() {
 
         try {
-
-            Vector3Int spawnChunk = new Vector3Int(Mathf.FloorToInt(spawnPosition.x / VoxelData.ChunkSize), Mathf.FloorToInt(spawnPosition.y / VoxelData.ChunkSize), Mathf.FloorToInt(spawnPosition.z / VoxelData.ChunkSize));
 
             for (int x = 0; x < VoxelData.PlanetSizeInChunks; x++) {
                 for (int z = 0; z < VoxelData.PlanetSizeInChunks; z++) {
@@ -132,13 +112,13 @@ public class Planet : MonoBehaviour{
             float nx = x / VoxelData.PlanetSizeInVoxels;
             float nz = z / VoxelData.PlanetSizeInVoxels;
 
-            float angle_x = TAU * nx;
-            float angle_z = TAU * nz;
+            float angle_x = VoxelData.TAU * nx;
+            float angle_z = VoxelData.TAU * nz;
 
-            double cosx = Mathf.Cos(angle_x) / TAU;
-            double sinx = Mathf.Sin(angle_x) / TAU;
-            double cosz = Mathf.Cos(angle_z) / TAU;
-            double sinz = Mathf.Sin(angle_z) / TAU;
+            double cosx = Mathf.Cos(angle_x) / VoxelData.TAU;
+            double sinx = Mathf.Sin(angle_x) / VoxelData.TAU;
+            double cosz = Mathf.Cos(angle_z) / VoxelData.TAU;
+            double sinz = Mathf.Sin(angle_z) / VoxelData.TAU;
 
             return Noise4D.Noise4_Classic(cosx, sinx, cosz, sinz);
 
@@ -154,7 +134,7 @@ public class Planet : MonoBehaviour{
 
             byte blockType = planetData.GetVoxel(pos);
 
-            if (blockTypes[blockType].isSolid) {
+            if (UniverseData.universe.blockTypes[blockType].isSolid) {
                 return true;
             } else {
                 return false;

@@ -63,6 +63,7 @@
     <Compile Include="Assets\Scripts\SimplexNoise.cs" />
     <Compile Include="Assets\Scripts\ChunkData.cs" />
     <Compile Include="Assets\Scripts\Planet.cs" />
+    <Compile Include="Assets\Scripts\Universe.cs" />
     <Compile Include="Assets\Scripts\UniverseData.cs" />
     <Compile Include="Assets\Scripts\Player.cs" />
   </ItemGroup>

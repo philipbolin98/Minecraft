@@ -30,8 +30,8 @@ public class Chunk{
             meshFilter = chunkObject.AddComponent<MeshFilter>();
             meshRenderer = chunkObject.AddComponent<MeshRenderer>();
 
-            meshRenderer.material = planet.material;
-            chunkObject.transform.SetParent(planet.transform);
+            meshRenderer.material = UniverseData.universe.material;
+            chunkObject.transform.SetParent(planet.planetObject.transform);
             chunkObject.transform.position = new Vector3(chunkCoord.x * VoxelData.ChunkSize, chunkCoord.y * VoxelData.ChunkSize, chunkCoord.z * VoxelData.ChunkSize);
             chunkObject.name = "Chunk " + chunkCoord.x + ", " + chunkCoord.y + ", " + chunkCoord.z;
             position = chunkObject.transform.position;
@@ -53,7 +53,7 @@ public class Chunk{
             for (int y = 0; y < VoxelData.ChunkSize; y++) {
                 for (int x = 0; x < VoxelData.ChunkSize; x++) {
                     for (int z = 0; z < VoxelData.ChunkSize; z++) {
-                        if (planet.blockTypes[chunkData.voxelMap[x, y, z]].isSolid) {
+                        if (UniverseData.universe.blockTypes[chunkData.voxelMap[x, y, z]].isSolid) {
                             AddVoxelDataToChunk(new Vector3Int(x, y, z));
                         }
                     }
@@ -79,7 +79,7 @@ public class Chunk{
                         vertices.Add(pos + VoxelData.Vertices[VoxelData.Triangles[p, i]]);
                     }
 
-                    AddTexture(planet.blockTypes[blockID].GetTextureID(p));
+                    AddTexture(UniverseData.universe.blockTypes[blockID].GetTextureID(p));
 
                     triangles.Add(vertexIndex);
                     triangles.Add(vertexIndex + 1);
@@ -147,7 +147,7 @@ public class Chunk{
             if (!IsVoxelInChunk(x, y, z))
                 return planet.CheckForVoxel(pos + position);
 
-            return planet.blockTypes[chunkData.voxelMap[x, y, z]].isSolid;
+            return UniverseData.universe.blockTypes[chunkData.voxelMap[x, y, z]].isSolid;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Chunk.CheckVoxel: " + e.Message);
