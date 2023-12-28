@@ -22,12 +22,11 @@ public class ChunkData {
     [HideInInspector]
     public byte[,,] voxelMap = new byte[VoxelData.ChunkSize, VoxelData.ChunkSize, VoxelData.ChunkSize];
 
-    public ChunkData(Vector3Int pos) {
-
+    public ChunkData(Vector3Int pos, Planet planet) {
         try {
 
             chunkCoord = pos;
-            Popuplate();
+            Popuplate(planet);
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function ChunkData.Constructor: " + e.Message);
@@ -37,8 +36,7 @@ public class ChunkData {
     /// <summary>
     /// Popuplates the current chunk data with all its voxels
     /// </summary>
-    public void Popuplate() {
-
+    public void Popuplate(Planet planet) {
         try {
 
             for (int x = 0; x < VoxelData.ChunkSize; x++) {
@@ -46,12 +44,12 @@ public class ChunkData {
                     for (int y = 0; y < VoxelData.ChunkSize; y++) {
 
                         Vector3Int voxelPosInWorld = new Vector3Int((VoxelData.ChunkSize * chunkCoord.x) + x, (VoxelData.ChunkSize * chunkCoord.y) + y, (VoxelData.ChunkSize * chunkCoord.z) + z);
-                        voxelMap[x, y, z] = UniverseData.currentPlanet.GetVoxel(voxelPosInWorld);
+                        voxelMap[x, y, z] = planet.GetVoxel(voxelPosInWorld);
                     }
                 }
             }
 
-            UniverseData.currentPlanet.planetData.AddToModifiedChunkList(this);
+            planet.planetData.AddToModifiedChunkList(this);
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function ChunkData.Popuplate: " + e.Message);

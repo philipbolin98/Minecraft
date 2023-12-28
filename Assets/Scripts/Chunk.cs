@@ -19,13 +19,12 @@ public class Chunk{
 
     public Vector3 position;
 
-    public Chunk(Vector3Int coord) {
-
+    public Chunk(Vector3Int coord, Planet planet) {
         try {
 
             chunkObject = new GameObject();
             chunkCoord = coord;
-            planet = UniverseData.currentPlanet;
+            this.planet = planet;
 
             meshFilter = chunkObject.AddComponent<MeshFilter>();
             meshRenderer = chunkObject.AddComponent<MeshRenderer>();
@@ -47,7 +46,6 @@ public class Chunk{
     }
 
     public void CreateMeshData() {
-
         try {
 
             for (int y = 0; y < VoxelData.ChunkSize; y++) {
@@ -66,7 +64,6 @@ public class Chunk{
     }
 
     void AddVoxelDataToChunk(Vector3Int pos) {
-
         try {
 
             for (int p = 0; p < 6; p++) {
@@ -98,7 +95,6 @@ public class Chunk{
     }
 
     void CreateMesh() {
-
         try {
 
             Mesh mesh = new Mesh();
@@ -115,7 +111,6 @@ public class Chunk{
     }
 
     void AddTexture(int textureID) {
-
         try {
 
             float y = textureID / VoxelData.TextureAtlasSizeInBlocks;
@@ -137,7 +132,6 @@ public class Chunk{
     }
 
     bool CheckVoxel(Vector3 pos) {
-
         try {
 
             int x = Mathf.FloorToInt(pos.x);
@@ -156,7 +150,6 @@ public class Chunk{
     }
 
     bool IsVoxelInChunk(int x, int y, int z) {
-
         try {
 
             if (x < 0 || x >= VoxelData.ChunkSize || y < 0 || y >= VoxelData.ChunkSize || z < 0 || z >= VoxelData.ChunkSize)
@@ -171,7 +164,6 @@ public class Chunk{
     }
 
     public byte GetVoxelFromGlobalVector3(Vector3 pos) {
-
         try {
 
             int xCheck = Mathf.FloorToInt(pos.x);

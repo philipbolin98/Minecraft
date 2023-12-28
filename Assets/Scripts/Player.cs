@@ -31,7 +31,6 @@ public class Player : MonoBehaviour{
     private bool jumpRequest = false;
 
     private void Start() {
-
         try {
 
             cam = GameObject.Find("Main Camera").transform;
@@ -45,7 +44,6 @@ public class Player : MonoBehaviour{
     }
 
     private void FixedUpdate() {
-
         try {
 
             CalculateVelocity();
@@ -63,7 +61,6 @@ public class Player : MonoBehaviour{
     }
 
     private void Update() {
-
         try {
 
             GetPlayerInputs();
@@ -74,7 +71,6 @@ public class Player : MonoBehaviour{
     }
 
     void Jump() {
-
         try {
 
             verticalMomentum = jumpForce;
@@ -87,7 +83,6 @@ public class Player : MonoBehaviour{
     }
 
     private void CalculateVelocity() {
-
         try {
 
             //Affect vertical momentum with velocity
@@ -156,7 +151,6 @@ public class Player : MonoBehaviour{
     }
 
     private void GetPlayerInputs() {
-
         try {
 
             horizontal = Input.GetAxis("Horizontal");
@@ -176,6 +170,10 @@ public class Player : MonoBehaviour{
 
             if (isGrounded && Input.GetButtonDown("Jump")) {
                 jumpRequest = true;
+            }
+
+            if (Input.GetKeyDown(KeyCode.F1)) {
+                SaveSystem.SavePlanet(UniverseData.currentPlanet.planetData);
             }
 
         } catch (System.Exception e) {
@@ -200,7 +198,6 @@ public class Player : MonoBehaviour{
     }
 
     private float checkUpSpeed(float upSpeed) {
-
         if (planet.CheckForVoxel(new Vector3(transform.position.x - playerWidth, transform.position.y + 2f + upSpeed, transform.position.z - playerWidth)) ||
         planet.CheckForVoxel(new Vector3(transform.position.x + playerWidth, transform.position.y + 2f + upSpeed, transform.position.z - playerWidth)) ||
         planet.CheckForVoxel(new Vector3(transform.position.x + playerWidth, transform.position.y + 2f + upSpeed, transform.position.z + playerWidth)) ||
@@ -215,7 +212,6 @@ public class Player : MonoBehaviour{
     }
 
     public bool front {
-
         get {
             if (planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y, nextPosition.z + playerWidth)) ||
                 planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y + 1f, nextPosition.z + playerWidth)))
@@ -228,7 +224,6 @@ public class Player : MonoBehaviour{
     }
 
     public bool back {
-
         get {
             if (planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y, nextPosition.z - playerWidth)) ||
                 planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y + 1f, nextPosition.z - playerWidth)))
@@ -241,7 +236,6 @@ public class Player : MonoBehaviour{
     }
 
     public bool left {
-
         get {
             if (planet.CheckForVoxel(new Vector3(nextPosition.x - playerWidth, nextPosition.y, nextPosition.z)) ||
                 planet.CheckForVoxel(new Vector3(nextPosition.x - playerWidth, nextPosition.y + 1f, nextPosition.z)))
@@ -254,7 +248,6 @@ public class Player : MonoBehaviour{
     }
 
     public bool right {
-
         get {
             if (planet.CheckForVoxel(new Vector3(nextPosition.x + playerWidth, nextPosition.y, nextPosition.z)) ||
                 planet.CheckForVoxel(new Vector3(nextPosition.x + playerWidth, nextPosition.y + 1f, nextPosition.z)))

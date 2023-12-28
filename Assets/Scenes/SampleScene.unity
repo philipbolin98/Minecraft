@@ -247,6 +247,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 1a40333bfe3eda44bbfedcb635179465, type: 2}
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
+  spawnPosition: {x: 0, y: 0, z: 0}
   blockTypes:
   - blockName: Air
     isSolid: 0
@@ -281,6 +282,14 @@ MonoBehaviour:
     leftFaceTexture: 2
     rightFaceTexture: 2
   - blockName: Dirt
+    isSolid: 1
+    backFaceTexture: 1
+    frontFaceTexture: 1
+    topFaceTexture: 1
+    bottomFaceTexture: 1
+    leftFaceTexture: 1
+    rightFaceTexture: 1
+  - blockName: Water
     isSolid: 1
     backFaceTexture: 1
     frontFaceTexture: 1

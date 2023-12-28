@@ -21,7 +21,6 @@ public class PlanetData {
     /// <param name="planetName">Name of the planet to create</param>
     /// <param name="seed">Seed of the planet</param>
     public PlanetData(string planetName, int seed) {
-
         try {
 
             this.planetName = planetName;
@@ -37,31 +36,28 @@ public class PlanetData {
     /// Loads planet data from a save file
     /// </summary>
     /// <param name="planetData">The planet data</param>
-    public PlanetData(PlanetData planetData) {
+    //public PlanetData(PlanetData planetData) {
+    //    try {
 
-        try {
+    //        planetName = planetData.planetName;
+    //        seed = planetData.seed;
+    //        initialLoad = false;
 
-            planetName = planetData.planetName;
-            seed = planetData.seed;
-            initialLoad = false;
-            LoadAllChunkData();
-
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function PlanetData.Constructor2: " + e.Message);
-        }
-    }
+    //    } catch (System.Exception e) {
+    //        Debug.LogError("Error in function PlanetData.Constructor2: " + e.Message);
+    //    }
+    //}
 
     /// <summary>
     /// Loads all chunk data when creating a new planetdata object
     /// </summary>
-    public void LoadAllChunkData() {
-
+    public void LoadAllChunkData(Planet planet) {
         try {
 
             for (int x = 0; x < VoxelData.PlanetSizeInChunks; x++) {
                 for (int z = 0; z < VoxelData.PlanetSizeInChunks; z++) {
                     for (int y = 0; y < VoxelData.PlanetSizeInChunks; y++) {
-                        LoadChunkData(new Vector3Int(x, y, z));
+                        LoadChunkData(new Vector3Int(x, y, z), planet);
                     }
                 }
             }
@@ -71,21 +67,20 @@ public class PlanetData {
         }
     }
 
-    public void LoadChunkData(Vector3Int pos) {
-
+    public void LoadChunkData(Vector3Int pos, Planet planet) {
         try {
 
             if (chunks.ContainsKey(pos)) {
                 return;
             }
 
-            ChunkData chunk = SaveSystem.LoadChunk(planetName, pos);
+            ChunkData chunkData = SaveSystem.LoadChunk(planetName, pos);
 
-            if (chunk != null) {
-                chunks.Add(pos, chunk);
+            if (chunkData != null) {
+                chunks.Add(pos, chunkData);
 
             } else {
-                chunks.Add(pos, new ChunkData(pos));
+                chunks.Add(pos, new ChunkData(pos, planet));
             }
 
         } catch (System.Exception e) {
@@ -94,7 +89,6 @@ public class PlanetData {
     }
 
     public ChunkData RequestChunk(Vector3Int pos) {
-
         try {
 
             if (chunks.ContainsKey(pos)) {
@@ -110,7 +104,6 @@ public class PlanetData {
     }
 
     public void AddToModifiedChunkList(ChunkData chunk) {
-
         try {
 
             if (!modifiedChunks.Contains(chunk)) {
@@ -122,8 +115,7 @@ public class PlanetData {
         }
     }
 
-    public bool IsVoxelInPlanet(Vector3 pos) {
-
+    public static bool IsVoxelInPlanet(Vector3 pos) {
         try {
 
             if (pos.x >= 0 && pos.x < VoxelData.PlanetSizeInVoxels && pos.y >= 0 && pos.y < VoxelData.PlanetSizeInVoxels && pos.z >= 0 && pos.z < VoxelData.PlanetSizeInVoxels) {
@@ -139,7 +131,6 @@ public class PlanetData {
     }
 
     public byte GetVoxel(Vector3 pos) {
-
         try {
 
             if (!IsVoxelInPlanet(pos)) {

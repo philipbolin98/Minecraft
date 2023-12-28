@@ -6,10 +6,10 @@ using Noise;
 public class Planet{
 
     public GameObject planetObject;
-    OpenSimplex2S Noise4D;
+    public int seaLevel;
 
-    public int seed;
-    public int seaLevel; 
+    private OpenSimplex2S Noise4D;
+    private int seed;
 
     Chunk[,,] chunks = new Chunk[VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks];
     //List<Vector3> activeChunks = new List<Vector3>();
@@ -17,10 +17,7 @@ public class Planet{
     public PlanetData planetData;
 
     public Planet(int seed) {
-
         try {
-
-            UniverseData.currentPlanet = this;
 
             this.seed = seed;
             Random.InitState(seed);
@@ -30,16 +27,17 @@ public class Planet{
             planetObject.transform.SetParent(UniverseData.universe.transform);
 
             planetData = SaveSystem.LoadPlanet(planetObject.name, seed);
-            planetData.LoadAllChunkData();
+            planetData.LoadAllChunkData(this);
 
             if (planetData.initialLoad) {
                 SaveSystem.SavePlanet(planetData);
+                planetData.initialLoad = false;
             }
 
             GeneratePlanet();
 
         } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.Start: " + e.Message);
+            Debug.LogError("Error in function Planet.Constructor: " + e.Message);
         }
     }
 
@@ -47,7 +45,6 @@ public class Planet{
     /// Generates all the chunk game objects in the current planet
     /// </summary>
     public void GeneratePlanet() {
-
         try {
 
             for (int x = 0; x < VoxelData.PlanetSizeInChunks; x++) {
@@ -55,7 +52,7 @@ public class Planet{
                     for (int y = 0; y < VoxelData.PlanetSizeInChunks; y++) {
 
                         Vector3Int newChunkCoord = new Vector3Int(x, y, z);
-                        chunks[x, y, z] = new Chunk(newChunkCoord);
+                        chunks[x, y, z] = new Chunk(newChunkCoord, this);
                         //activeChunks.Add(newChunkCoord);
                     }
                 }
@@ -66,19 +63,28 @@ public class Planet{
         }
     }
 
+    public void CheckViewDistance(Vector3 pos) {
+        try {
+
+
+
+        } catch (System.Exception e) {
+            Debug.LogError("Error in function Planet.CheckViewDistance: " + e.Message);
+        }
+    }
+
     /// <summary>
     /// Gets the block type of a voxel at a given position in the planet
     /// </summary>
     /// <param name="pos">The position of the voxel in the planet</param>
     /// <returns>An integer representing the block type</returns>
     public byte GetVoxel(Vector3Int pos) {
-
         try {
 
             byte voxelValue;
             int terrainHeight = VoxelData.SurfaceHeightInVoxels + Mathf.FloorToInt(VoxelData.SurfaceHeightInVoxels * (float)TorusNoise(pos.x, pos.z));
 
-            if (!planetData.IsVoxelInPlanet(pos) || pos.y > terrainHeight) //Air for everything above the surface
+            if (!PlanetData.IsVoxelInPlanet(pos) || pos.y > terrainHeight) //Air for everything above the surface
                 return 0;
 
             if (pos.y < 1) //Bedrock for y = 0
@@ -106,7 +112,6 @@ public class Planet{
     /// <param name="z">The z coord in the planet</param>
     /// <returns></returns>
     public double TorusNoise(float x, float z) {
-
         try {
 
             float nx = x / VoxelData.PlanetSizeInVoxels;
@@ -129,16 +134,10 @@ public class Planet{
     }
 
     public bool CheckForVoxel(Vector3 pos) {
-
         try {
 
             byte blockType = planetData.GetVoxel(pos);
-
-            if (UniverseData.universe.blockTypes[blockType].isSolid) {
-                return true;
-            } else {
-                return false;
-            }
+            return UniverseData.universe.blockTypes[blockType].isSolid;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.CheckForVoxel: " + e.Message);
