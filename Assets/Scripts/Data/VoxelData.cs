@@ -12,9 +12,10 @@ public class VoxelData{
         get { return PlanetSizeInChunks * ChunkSize; }
     }
 
-    public static int SurfaceHeightInVoxels {
-        get { return PlanetSizeInVoxels / 2; }
-    }
+    public static readonly int OceanFloorLevel = 20;
+    public static readonly int SeaLevel = 30;
+    public static readonly int MaxTerrainLevel = 50;
+    public static readonly int WorldHeight = 128;
 
     public static float NormalizedBlockTextureSize {
         get { return 1f / TextureAtlasSizeInBlocks; }

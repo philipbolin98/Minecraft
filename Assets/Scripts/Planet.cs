@@ -11,7 +11,7 @@ public class Planet{
     private OpenSimplex2S Noise4D;
     private int seed;
 
-    Chunk[,,] chunks = new Chunk[VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks];
+    Chunk[,] chunks = new Chunk[VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks];
     //List<Vector3> activeChunks = new List<Vector3>();
 
     public PlanetData planetData;
@@ -29,10 +29,10 @@ public class Planet{
             planetData = SaveSystem.LoadPlanet(planetObject.name, seed);
             planetData.LoadAllChunkData(this);
 
-            if (planetData.initialLoad) {
-                SaveSystem.SavePlanet(planetData);
-                planetData.initialLoad = false;
-            }
+            //if (planetData.initialLoad) {
+            //    SaveSystem.SavePlanet(planetData);
+            //    planetData.initialLoad = false;
+            //}
 
             GeneratePlanet();
 
@@ -49,12 +49,10 @@ public class Planet{
 
             for (int x = 0; x < VoxelData.PlanetSizeInChunks; x++) {
                 for (int z = 0; z < VoxelData.PlanetSizeInChunks; z++) {
-                    for (int y = 0; y < VoxelData.PlanetSizeInChunks; y++) {
 
-                        Vector3Int newChunkCoord = new Vector3Int(x, y, z);
-                        chunks[x, y, z] = new Chunk(newChunkCoord, this);
-                        //activeChunks.Add(newChunkCoord);
-                    }
+                    Vector2Int newChunkCoord = new Vector2Int(x, z);
+                    chunks[x, z] = new Chunk(newChunkCoord, this);
+                    //activeChunks.Add(newChunkCoord);
                 }
             }
 
@@ -81,22 +79,7 @@ public class Planet{
     public byte GetVoxel(Vector3Int pos) {
         try {
 
-            byte voxelValue;
-            int terrainHeight = VoxelData.SurfaceHeightInVoxels + Mathf.FloorToInt(VoxelData.SurfaceHeightInVoxels * (float)TorusNoise(pos.x, pos.z));
-
-            if (!PlanetData.IsVoxelInPlanet(pos) || pos.y > terrainHeight) //Air for everything above the surface
-                return 0;
-
-            if (pos.y < 1) //Bedrock for y = 0
-                voxelValue = 1;
-            else if (pos.y == terrainHeight) //Grass for the top layer
-                voxelValue = 3;
-            else if (pos.y > terrainHeight - 4) //Dirt for next 3 layers
-                voxelValue = 4;
-            else //Everything else stone
-                voxelValue = 2;
-
-            return voxelValue;
+            return 0;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.GetVoxel: " + e.Message);
@@ -125,7 +108,9 @@ public class Planet{
             double cosz = Mathf.Cos(angle_z) / VoxelData.TAU;
             double sinz = Mathf.Sin(angle_z) / VoxelData.TAU;
 
-            return Noise4D.Noise4_Classic(cosx, sinx, cosz, sinz);
+            double noiseValue = Noise4D.Noise4_Classic(cosx, sinx, cosz, sinz);
+            noiseValue = (noiseValue + 1) / 2;
+            return noiseValue;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.TorusNoise: " + e.Message);

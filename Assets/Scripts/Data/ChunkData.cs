@@ -1,28 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 [System.Serializable]
 public class ChunkData {
 
     private int x;
-    private int y;
     private int z;
 
-    public Vector3Int chunkCoord {
+    public Vector2Int chunkCoord {
 
-        get { return new Vector3Int(x, y, z); }
+        get { 
+            return new Vector2Int(x, z);
+        }
         set {
             x = value.x;
-            y = value.y;
-            z = value.z;
+            z = value.y;
         }
     }
 
     [HideInInspector]
-    public byte[,,] voxelMap = new byte[VoxelData.ChunkSize, VoxelData.ChunkSize, VoxelData.ChunkSize];
+    public byte[,,] voxelMap = new byte[VoxelData.ChunkSize, VoxelData.WorldHeight, VoxelData.ChunkSize];
 
-    public ChunkData(Vector3Int pos, Planet planet) {
+    public ChunkData(Vector2Int pos, Planet planet) {
         try {
 
             chunkCoord = pos;
@@ -41,10 +42,34 @@ public class ChunkData {
 
             for (int x = 0; x < VoxelData.ChunkSize; x++) {
                 for (int z = 0; z < VoxelData.ChunkSize; z++) {
-                    for (int y = 0; y < VoxelData.ChunkSize; y++) {
 
-                        Vector3Int voxelPosInWorld = new Vector3Int((VoxelData.ChunkSize * chunkCoord.x) + x, (VoxelData.ChunkSize * chunkCoord.y) + y, (VoxelData.ChunkSize * chunkCoord.z) + z);
-                        voxelMap[x, y, z] = planet.GetVoxel(voxelPosInWorld);
+                    int voxelX = (VoxelData.ChunkSize * chunkCoord.x) + x;
+                    int voxelZ = (VoxelData.ChunkSize * chunkCoord.y) + z;
+
+                    byte voxelValue;
+                    float noiseValue = (float)planet.TorusNoise(voxelX, voxelZ);
+
+                    for (int y = 0; y < VoxelData.WorldHeight; y++) {
+
+                        Vector3Int voxelPosInWorld = new Vector3Int(voxelX, y, voxelZ);
+
+                        int terrainHeight = VoxelData.OceanFloorLevel + Mathf.FloorToInt((VoxelData.MaxTerrainLevel - VoxelData.OceanFloorLevel) * noiseValue);
+                        if (!PlanetData.IsVoxelInPlanet(voxelPosInWorld) || y > terrainHeight) //Air for everything above the surface
+                            voxelValue = 0;
+
+                        else if (y < 1) //Bedrock for y = 0
+                            voxelValue = 1;
+                        else if (y == terrainHeight) //Grass for the top layer
+                            voxelValue = 3;
+                        else if (y > terrainHeight - 4) //Dirt for next 3 layers
+                            voxelValue = 4;
+                        else //Everything else stone
+                            voxelValue = 2;
+
+                        //return voxelValue;
+
+
+                        voxelMap[x, y, z] = voxelValue;
                     }
                 }
             }

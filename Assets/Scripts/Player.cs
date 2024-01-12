@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.SearchService;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Player : MonoBehaviour{
 
@@ -173,7 +175,7 @@ public class Player : MonoBehaviour{
             }
 
             if (Input.GetKeyDown(KeyCode.F1)) {
-                SaveSystem.SavePlanet(UniverseData.currentPlanet.planetData);
+                SceneManager.LoadScene("SampleScene");
             }
 
         } catch (System.Exception e) {

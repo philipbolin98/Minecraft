@@ -14,7 +14,7 @@ public class Universe : MonoBehaviour {
 
             UniverseData.universe = this;
 
-            int seed = Mathf.CeilToInt(Random.Range(0, 100));
+            int seed = Mathf.FloorToInt(Random.Range(0f, 1f) * 100);
 
             UniverseData.currentPlanet = new Planet(seed);
 

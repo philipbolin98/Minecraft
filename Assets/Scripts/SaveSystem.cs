@@ -38,25 +38,25 @@ public class SaveSystem {
 
             string loadPath = $"{appPath}/saves/{planetName}/";
 
-            if (Directory.Exists(loadPath)) {
+            //if (Directory.Exists(loadPath)) {
 
-                Debug.Log($"{planetName} found. Loading from save.");
+            //    Debug.Log($"{planetName} found. Loading from save.");
 
-                BinaryFormatter formatter = new BinaryFormatter();
+            //    BinaryFormatter formatter = new BinaryFormatter();
 
-                PlanetData planetData = null;
-                using (FileStream stream = new FileStream($"{loadPath}planet.dat", FileMode.Open)) {
-                    planetData = formatter.Deserialize(stream) as PlanetData;
-                }
+            //    PlanetData planetData = null;
+            //    using (FileStream stream = new FileStream($"{loadPath}planet.dat", FileMode.Open)) {
+            //        planetData = formatter.Deserialize(stream) as PlanetData;
+            //    }
                 
-                return planetData;
+            //    return planetData;
 
-            } else {
+            //} else {
 
                 Debug.Log($"{planetName} not found. Creating new planet.");
 
                 return new PlanetData(planetName, seed);
-            }
+            //}
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function SaveSystem.LoadPlanet: " + e.Message);
@@ -87,7 +87,7 @@ public class SaveSystem {
     public static void SaveChunk(ChunkData chunk, string planetName) {
         try {
 
-            string chunkName = $"{chunk.chunkCoord.x}-{chunk.chunkCoord.y}-{chunk.chunkCoord.z}";
+            string chunkName = $"{chunk.chunkCoord.x}-{chunk.chunkCoord.y}";
 
             string savePath = $"{appPath}/saves/{planetName}/chunks/";
 
@@ -106,10 +106,10 @@ public class SaveSystem {
         }
     }
 
-    public static ChunkData LoadChunk(string planetName, Vector3Int pos) {
+    public static ChunkData LoadChunk(string planetName, Vector2Int pos) {
         try {
 
-            string chunkName = $"{pos.x}-{pos.y}-{pos.z}";
+            string chunkName = $"{pos.x}-{pos.y}";
 
             string loadPath = $"{appPath}/saves/{planetName}/chunks/{chunkName}.chunk";
 

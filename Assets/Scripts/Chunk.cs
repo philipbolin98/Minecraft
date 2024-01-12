@@ -7,7 +7,7 @@ public class Chunk{
     public MeshFilter meshFilter;
     public MeshRenderer meshRenderer;
     public GameObject chunkObject;
-    public Vector3Int chunkCoord;
+    public Vector2Int chunkCoord;
     public Planet planet;
     public ChunkData chunkData;
 
@@ -19,7 +19,7 @@ public class Chunk{
 
     public Vector3 position;
 
-    public Chunk(Vector3Int coord, Planet planet) {
+    public Chunk(Vector2Int coord, Planet planet) {
         try {
 
             chunkObject = new GameObject();
@@ -31,11 +31,11 @@ public class Chunk{
 
             meshRenderer.material = UniverseData.universe.material;
             chunkObject.transform.SetParent(planet.planetObject.transform);
-            chunkObject.transform.position = new Vector3(chunkCoord.x * VoxelData.ChunkSize, chunkCoord.y * VoxelData.ChunkSize, chunkCoord.z * VoxelData.ChunkSize);
-            chunkObject.name = "Chunk " + chunkCoord.x + ", " + chunkCoord.y + ", " + chunkCoord.z;
+            chunkObject.transform.position = new Vector3(chunkCoord.x * VoxelData.ChunkSize, 0, chunkCoord.y * VoxelData.ChunkSize);
+            chunkObject.name = "Chunk " + chunkCoord.x + ", " + chunkCoord.y;
             position = chunkObject.transform.position;
 
-            chunkData = planet.planetData.RequestChunk(new Vector3Int(chunkCoord.x, chunkCoord.y, chunkCoord.z));
+            chunkData = planet.planetData.RequestChunk(new Vector2Int(chunkCoord.x, chunkCoord.y));
 
             CreateMeshData();
             CreateMesh();
@@ -48,7 +48,7 @@ public class Chunk{
     public void CreateMeshData() {
         try {
 
-            for (int y = 0; y < VoxelData.ChunkSize; y++) {
+            for (int y = 0; y < VoxelData.WorldHeight; y++) {
                 for (int x = 0; x < VoxelData.ChunkSize; x++) {
                     for (int z = 0; z < VoxelData.ChunkSize; z++) {
                         if (UniverseData.universe.blockTypes[chunkData.voxelMap[x, y, z]].isSolid) {
@@ -152,7 +152,7 @@ public class Chunk{
     bool IsVoxelInChunk(int x, int y, int z) {
         try {
 
-            if (x < 0 || x >= VoxelData.ChunkSize || y < 0 || y >= VoxelData.ChunkSize || z < 0 || z >= VoxelData.ChunkSize)
+            if (x < 0 || x >= VoxelData.ChunkSize || y < 0 || y >= VoxelData.WorldHeight || z < 0 || z >= VoxelData.ChunkSize)
                 return false;
 
             else return true;
