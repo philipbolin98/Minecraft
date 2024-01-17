@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Chunk{
+public class Chunk {
 
     public MeshFilter meshFilter;
     public MeshRenderer meshRenderer;
@@ -29,8 +29,8 @@ public class Chunk{
             meshFilter = chunkObject.AddComponent<MeshFilter>();
             meshRenderer = chunkObject.AddComponent<MeshRenderer>();
 
-            meshRenderer.material = UniverseData.universe.material;
-            chunkObject.transform.SetParent(planet.planetObject.transform);
+            meshRenderer.material = planet.material;
+            chunkObject.transform.SetParent(planet.gameObject.transform);
             chunkObject.transform.position = new Vector3(chunkCoord.x * VoxelData.ChunkSize, 0, chunkCoord.y * VoxelData.ChunkSize);
             chunkObject.name = "Chunk " + chunkCoord.x + ", " + chunkCoord.y;
             position = chunkObject.transform.position;
@@ -51,7 +51,7 @@ public class Chunk{
             for (int y = 0; y < VoxelData.WorldHeight; y++) {
                 for (int x = 0; x < VoxelData.ChunkSize; x++) {
                     for (int z = 0; z < VoxelData.ChunkSize; z++) {
-                        if (UniverseData.universe.blockTypes[chunkData.voxelMap[x, y, z]].isSolid) {
+                        if (this.planet.blockTypes[chunkData.voxelMap[x, y, z]].isSolid) {
                             AddVoxelDataToChunk(new Vector3Int(x, y, z));
                         }
                     }
@@ -76,7 +76,7 @@ public class Chunk{
                         vertices.Add(pos + VoxelData.Vertices[VoxelData.Triangles[p, i]]);
                     }
 
-                    AddTexture(UniverseData.universe.blockTypes[blockID].GetTextureID(p));
+                    AddTexture(this.planet.blockTypes[blockID].GetTextureID(p));
 
                     triangles.Add(vertexIndex);
                     triangles.Add(vertexIndex + 1);
@@ -141,7 +141,7 @@ public class Chunk{
             if (!IsVoxelInChunk(x, y, z))
                 return planet.CheckForVoxel(pos + position);
 
-            return UniverseData.universe.blockTypes[chunkData.voxelMap[x, y, z]].isSolid;
+            return this.planet.blockTypes[chunkData.voxelMap[x, y, z]].isSolid;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Chunk.CheckVoxel: " + e.Message);

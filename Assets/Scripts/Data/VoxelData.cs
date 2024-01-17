@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class VoxelData{
+public class VoxelData {
 
     public static readonly int ChunkSize = 16;
     public static readonly int PlanetSizeInChunks = 8;

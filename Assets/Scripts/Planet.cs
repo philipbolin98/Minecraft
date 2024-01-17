@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using Noise;
 
-public class Planet{
+public class Planet : MonoBehaviour {
 
-    public GameObject planetObject;
+    public Material material;
+    public GameObject player;
+    public Vector3 spawnPosition;
+    public BlockType[] blockTypes;
+
     public int seaLevel;
 
     private OpenSimplex2S Noise4D;
@@ -16,17 +20,16 @@ public class Planet{
 
     public PlanetData planetData;
 
-    public Planet(int seed) {
+    private void Start() {
         try {
+
+            int seed = Mathf.FloorToInt(Random.Range(0f, 1f) * 100);
 
             this.seed = seed;
             Random.InitState(seed);
             Noise4D = new OpenSimplex2S(seed);
 
-            planetObject = new GameObject("Planet " + seed);
-            planetObject.transform.SetParent(UniverseData.universe.transform);
-
-            planetData = SaveSystem.LoadPlanet(planetObject.name, seed);
+            planetData = SaveSystem.LoadPlanet(this.gameObject.name, seed);
             planetData.LoadAllChunkData(this);
 
             //if (planetData.initialLoad) {
@@ -36,8 +39,14 @@ public class Planet{
 
             GeneratePlanet();
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.Constructor: " + e.Message);
+
+
+            spawnPosition = new Vector3(VoxelData.PlanetSizeInVoxels / 2, VoxelData.PlanetSizeInVoxels + 2f, VoxelData.PlanetSizeInVoxels / 2);
+            Instantiate(player);
+            player.transform.position = spawnPosition;
+
+        } catch (System.Exception ex) {
+
         }
     }
 
@@ -122,7 +131,7 @@ public class Planet{
         try {
 
             byte blockType = planetData.GetVoxel(pos);
-            return UniverseData.universe.blockTypes[blockType].isSolid;
+            return this.blockTypes[blockType].isSolid;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.CheckForVoxel: " + e.Message);
@@ -132,7 +141,7 @@ public class Planet{
 }
 
 [System.Serializable]
-public class BlockType{
+public class BlockType {
 
     public string blockName;
     public bool isSolid;

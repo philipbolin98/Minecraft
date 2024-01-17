@@ -4,7 +4,7 @@ using UnityEditor.SearchService;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class Player : MonoBehaviour{
+public class Player : MonoBehaviour {
 
     private bool isGrounded;
     private bool isSprinting;
@@ -19,7 +19,7 @@ public class Player : MonoBehaviour{
 
     private float mouseSensitivity = 3f;
     private float playerWidth = .25f;
-    
+
     private float horizontal;
     private float vertical;
     private float rotationY = 0f;
@@ -36,7 +36,7 @@ public class Player : MonoBehaviour{
         try {
 
             cam = GameObject.Find("Main Camera").transform;
-            planet = UniverseData.currentPlanet;
+            planet = GameObject.Find("Planet").GetComponent<Planet>();
 
             nextPosition = transform.position;
 
@@ -124,7 +124,7 @@ public class Player : MonoBehaviour{
                 nextPosition.z = Mathf.Clamp(nextPosition.z, Mathf.Floor(nextPosition.z) + playerWidth, nextPosition.z + 1);
             }
 
-            if(velocity.x > 0 && right) {
+            if (velocity.x > 0 && right) {
                 velocity.x = 0;
                 nextPosition.x = Mathf.Clamp(nextPosition.x, nextPosition.x - 1, Mathf.Ceil(nextPosition.x) - playerWidth);
             }
@@ -135,7 +135,7 @@ public class Player : MonoBehaviour{
             }
 
             //Wrap around to other side of the world
-            if(nextPosition.x > VoxelData.PlanetSizeInVoxels) {
+            if (nextPosition.x > VoxelData.PlanetSizeInVoxels) {
                 nextPosition.x = 0;
             } else if (nextPosition.x < 0) {
                 nextPosition.x = VoxelData.PlanetSizeInVoxels;

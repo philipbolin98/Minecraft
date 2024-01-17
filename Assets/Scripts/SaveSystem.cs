@@ -48,14 +48,14 @@ public class SaveSystem {
             //    using (FileStream stream = new FileStream($"{loadPath}planet.dat", FileMode.Open)) {
             //        planetData = formatter.Deserialize(stream) as PlanetData;
             //    }
-                
+
             //    return planetData;
 
             //} else {
 
-                Debug.Log($"{planetName} not found. Creating new planet.");
+            Debug.Log($"{planetName} not found. Creating new planet.");
 
-                return new PlanetData(planetName, seed);
+            return new PlanetData(planetName, seed);
             //}
 
         } catch (System.Exception e) {
