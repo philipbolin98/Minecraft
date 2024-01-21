@@ -167,8 +167,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 794a213323db42a4588f7e627c4bae9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  material: {fileID: 2100000, guid: 1a40333bfe3eda44bbfedcb635179465, type: 2}
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
+  chunkPrefab: {fileID: 4945950583187773826, guid: 635b2ba8c59593745874cd824ca613e2, type: 3}
   spawnPosition: {x: 0, y: 0, z: 0}
   blockTypes:
   - blockName: Air
@@ -212,10 +212,10 @@ MonoBehaviour:
     leftFaceTexture: 1
     rightFaceTexture: 1
   seaLevel: 0
-  planetData:
+  activeChunks: []
+  data:
     planetName: 
     seed: 0
-    initialLoad: 0
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0

@@ -13,10 +13,10 @@ public class Player : MonoBehaviour {
     private Transform cam;
     private Planet planet;
 
-    private float walkSpeed = 3f;
-    private float sprintSpeed = 6f;
-    private float jumpForce = 5f;
-    private float gravity = -9.8f;
+    public float walkSpeed = 8f;
+    public float sprintSpeed = 16f;
+    public float jumpForce = 10f;
+    public float gravity = -9.8f;
 
     private float mouseSensitivity = 3f;
     private float playerWidth = .25f;
@@ -32,6 +32,7 @@ public class Player : MonoBehaviour {
 
     private float verticalMomentum = 0;
     private bool jumpRequest = false;
+    private bool renderNewChunks = false;
 
     private void Start() {
         try {
@@ -40,6 +41,9 @@ public class Player : MonoBehaviour {
             planet = GameObject.Find("Planet").GetComponent<Planet>();
 
             nextPosition = transform.position;
+            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
+
+            StartCoroutine(ChunkRenderer());
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.Start: " + e.Message);
@@ -58,7 +62,13 @@ public class Player : MonoBehaviour {
             cam.transform.eulerAngles = new Vector3(rotationX, cam.transform.eulerAngles.y, cam.transform.eulerAngles.z);
 
             transform.position = nextPosition;
-            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y));
+
+            Vector2Int nextChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
+
+            if (nextChunk.x != currentChunk.x || nextChunk.y != currentChunk.y) {
+                currentChunk = nextChunk;
+                renderNewChunks = true;
+            }
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.FixedUpdate: " + e.Message);
@@ -72,6 +82,18 @@ public class Player : MonoBehaviour {
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.Update: " + e.Message);
+        }
+    }
+
+    IEnumerator ChunkRenderer() {
+        while (true) {
+
+            if (renderNewChunks) {
+                renderNewChunks = false;
+                this.planet.GeneratePlanet(transform.position);
+            }
+
+            yield return null;
         }
     }
 
@@ -135,19 +157,6 @@ public class Player : MonoBehaviour {
             if (velocity.x < 0 && CheckLeft()) {
                 velocity.x = 0;
                 nextPosition.x = Mathf.Clamp(nextPosition.x, Mathf.Floor(nextPosition.x) + playerWidth, nextPosition.x + 1);
-            }
-
-            //Wrap around to other side of the world
-            if (nextPosition.x > Planet.PlanetSizeInVoxels) {
-                nextPosition.x = 0;
-            } else if (nextPosition.x < 0) {
-                nextPosition.x = Planet.PlanetSizeInVoxels;
-            }
-
-            if (nextPosition.z > Planet.PlanetSizeInVoxels) {
-                nextPosition.z = 0;
-            } else if (nextPosition.z < 0) {
-                nextPosition.z = Planet.PlanetSizeInVoxels;
             }
 
         } catch (System.Exception e) {

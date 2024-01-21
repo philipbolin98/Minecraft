@@ -16,8 +16,8 @@ public class Planet : MonoBehaviour {
         get { return PlanetSizeInChunks * VoxelData.ChunkSize; }
     }
 
-    public Material material;
     public GameObject player;
+    public GameObject chunkPrefab;
     public Vector3 spawnPosition;
     public BlockType[] blockTypes;
 
@@ -26,8 +26,9 @@ public class Planet : MonoBehaviour {
     private OpenSimplex2S Noise4D;
     private int seed;
 
-    Chunk[,] chunks = new Chunk[PlanetSizeInChunks, PlanetSizeInChunks];
-    HashSet<Vector2Int> activeChunks = new HashSet<Vector2Int>();
+    public Chunk[,] chunks = new Chunk[PlanetSizeInChunks, PlanetSizeInChunks];
+    public List<Vector2Int> activeChunks = new List<Vector2Int>();
+    public Queue<GameObject> unusedChunkObjects = new Queue<GameObject>();
 
     public PlanetData data;
 
@@ -48,9 +49,9 @@ public class Planet : MonoBehaviour {
             //    planetData.initialLoad = false;
             //}
 
-            spawnPosition = new Vector3(PlanetSizeInVoxels / 2, WorldHeight, PlanetSizeInVoxels / 2);
+            spawnPosition = new Vector3(1, WorldHeight, 1); //Need to read player spawn position from file once saving is implemented
 
-            GeneratePlanet();
+            GeneratePlanet(spawnPosition);
             
             Instantiate(player);
             player.transform.position = spawnPosition;
@@ -63,21 +64,50 @@ public class Planet : MonoBehaviour {
     /// <summary>
     /// Generates all the chunk game objects in the current planet
     /// </summary>
-    public void GeneratePlanet() {
+    /// <param name="pos">The position to spawn the chunks around</param>
+    public void GeneratePlanet(Vector3 pos) {
         try {
 
-            Vector2Int spawnChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(spawnPosition.x), Mathf.FloorToInt(spawnPosition.y));
+            Vector2Int centerChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y), Mathf.FloorToInt(pos.z));
 
-            int minChunkX = spawnChunk.x - ViewDistanceInChunks;
-            int maxChunkX = spawnChunk.x + ViewDistanceInChunks;
+            int minChunkX = centerChunk.x - ViewDistanceInChunks;
+            int maxChunkX = centerChunk.x + ViewDistanceInChunks;
 
-            int minChunkZ = spawnChunk.y - ViewDistanceInChunks;
-            int maxChunkZ = spawnChunk.y + ViewDistanceInChunks;
+            int minChunkZ = centerChunk.y - ViewDistanceInChunks;
+            int maxChunkZ = centerChunk.y + ViewDistanceInChunks;
+
+            for (int i = activeChunks.Count - 1; i >= 0; i--) {
+
+                Vector2Int chunkPos = activeChunks[i];
+                int chunkX = chunkPos.x;
+                int chunkZ = chunkPos.y;
+
+                if (chunkX < minChunkX || chunkX > maxChunkX || chunkZ < minChunkZ || chunkZ > maxChunkZ) {
+                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(chunkX, chunkZ);
+                    this.chunks[normalizedChunkPos.x, normalizedChunkPos.y].Disable();
+                    activeChunks.Remove(activeChunks[i]);
+                }
+            }
 
             for (int x = minChunkX; x <= maxChunkX; x++) {
                 for (int z = minChunkZ; z <= maxChunkZ; z++) {
-                    chunks[x, z] = new Chunk(this, x, z);
-                    activeChunks.Add(new Vector2Int(x, z));
+
+                    Vector2Int chunkPos = new Vector2Int(x, z);
+                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(x, z);
+
+                    if (!activeChunks.Contains(chunkPos)) {
+
+                        Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
+
+                        if (chunk != null) {
+                            chunk.Enable(chunkPos, normalizedChunkPos);
+                        } else {
+                            chunk = new Chunk(this, chunkPos, normalizedChunkPos);
+                            this.chunks[normalizedChunkPos.x, normalizedChunkPos.y] = chunk;
+                        }
+
+                        activeChunks.Add(chunkPos);
+                    }
                 }
             }
 

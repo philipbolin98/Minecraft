@@ -5,7 +5,6 @@ using UnityEngine;
 public class Chunk {
 
     public MeshFilter meshFilter;
-    public MeshRenderer meshRenderer;
     public GameObject gameObject;
     public Vector2Int pos;
     public Planet planet;
@@ -17,25 +16,17 @@ public class Chunk {
 
     private int vertexIndex = 0;
 
-    public Chunk(Planet planet, int x, int z) {
+    public Chunk(Planet planet, Vector2Int pos, Vector2Int normalizedPos) {
         try {
 
-            gameObject = new GameObject();
-            this.pos = new Vector2Int(x, z);
+            this.pos = normalizedPos;
             this.planet = planet;
 
-            meshFilter = gameObject.AddComponent<MeshFilter>();
-            meshRenderer = gameObject.AddComponent<MeshRenderer>();
-
-            meshRenderer.material = planet.material;
-            gameObject.transform.SetParent(planet.gameObject.transform);
-            gameObject.transform.position = new Vector3(x * VoxelData.ChunkSize, 0, z * VoxelData.ChunkSize);
-            gameObject.name = "Chunk " + x + ", " + z;
-
-            data = planet.data.RequestChunk(x, z);
+            data = planet.data.RequestChunk(normalizedPos.x, normalizedPos.y);
 
             CreateMeshData();
-            CreateMesh();
+
+            this.Enable(pos, normalizedPos);
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Chunk.Constructor: " + e.Message);
@@ -70,7 +61,7 @@ public class Chunk {
 
                 Vector3Int posToCheck = pos + VoxelData.FaceChecks[p];
 
-                if (!HelperFunctions.CheckVoxelInChunk(this, posToCheck.x, posToCheck.y, posToCheck.z)) {
+                if (HelperFunctions.IsVoxelInPlanet(posToCheck.x, posToCheck.y, posToCheck.z) && !HelperFunctions.CheckVoxelInChunk(this, posToCheck.x, posToCheck.y, posToCheck.z)) {
 
                     byte blockID = data.blocks[pos.x, pos.y, pos.z];
 
@@ -130,6 +121,41 @@ public class Chunk {
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Chunk.AddTexture: " + e.Message);
+        }
+    }
+
+    public void Disable() {
+        try {
+
+            this.gameObject.SetActive(false);
+            this.planet.unusedChunkObjects.Enqueue(this.gameObject);
+            this.gameObject = null;
+            this.meshFilter.mesh = null;
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Chunk Disable: " + ex.Message);
+        }
+    }
+
+    public void Enable(Vector2Int pos, Vector2Int normalizedPos) {
+        try {
+
+            if (this.planet.unusedChunkObjects.Count > 0) {
+                this.gameObject = planet.unusedChunkObjects.Dequeue();
+                this.gameObject.SetActive(true);
+            } else {
+                this.gameObject = Object.Instantiate(this.planet.chunkPrefab);
+            }
+
+            this.meshFilter = gameObject.GetComponent<MeshFilter>();
+            this.gameObject.transform.SetParent(planet.gameObject.transform);
+            this.gameObject.transform.position = new Vector3(pos.x * VoxelData.ChunkSize, 0, pos.y * VoxelData.ChunkSize);
+            this.gameObject.name = $"Chunk {normalizedPos.x}, {normalizedPos.y}";
+
+            this.CreateMesh();
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Chunk Enable: " + ex.Message);
         }
     }
 }
