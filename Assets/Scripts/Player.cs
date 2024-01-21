@@ -8,6 +8,7 @@ public class Player : MonoBehaviour {
 
     private bool isGrounded;
     private bool isSprinting;
+    private Vector2Int currentChunk;
 
     private Transform cam;
     private Planet planet;
@@ -49,13 +50,15 @@ public class Player : MonoBehaviour {
         try {
 
             CalculateVelocity();
-            if (jumpRequest)
+            if (jumpRequest) {
                 Jump();
+            }
 
             transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotationY, transform.eulerAngles.z);
             cam.transform.eulerAngles = new Vector3(rotationX, cam.transform.eulerAngles.y, cam.transform.eulerAngles.z);
 
             transform.position = nextPosition;
+            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y));
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.FixedUpdate: " + e.Message);
@@ -101,10 +104,10 @@ public class Player : MonoBehaviour {
             //Apply vertical momentum
             velocity += Vector3.up * verticalMomentum * Time.fixedDeltaTime;
 
-            if (velocity.y < 0) {
-                velocity.y = checkDownSpeed(velocity.y);
-            } else if (velocity.y > 0) {
-                velocity.y = checkUpSpeed(velocity.y);
+            if (velocity.y < 0 && CheckBottom(velocity.y)) {
+                velocity.y = 0;
+            } else if (velocity.y > 0 && CheckTop(velocity.y)) {
+                velocity.y = 0;
             }
 
             nextPosition += velocity;
@@ -114,37 +117,37 @@ public class Player : MonoBehaviour {
             }
 
             //Check if running into any blocks in all four directions
-            if (velocity.z > 0 && front) {
+            if (velocity.z > 0 && CheckFront()) {
                 velocity.z = 0;
                 nextPosition.z = Mathf.Clamp(nextPosition.z, nextPosition.z - 1, Mathf.Ceil(nextPosition.z) - playerWidth);
             }
 
-            if (velocity.z < 0 && back) {
+            if (velocity.z < 0 && CheckBack()) {
                 velocity.z = 0;
                 nextPosition.z = Mathf.Clamp(nextPosition.z, Mathf.Floor(nextPosition.z) + playerWidth, nextPosition.z + 1);
             }
 
-            if (velocity.x > 0 && right) {
+            if (velocity.x > 0 && CheckRight()) {
                 velocity.x = 0;
                 nextPosition.x = Mathf.Clamp(nextPosition.x, nextPosition.x - 1, Mathf.Ceil(nextPosition.x) - playerWidth);
             }
 
-            if (velocity.x < 0 && left) {
+            if (velocity.x < 0 && CheckLeft()) {
                 velocity.x = 0;
                 nextPosition.x = Mathf.Clamp(nextPosition.x, Mathf.Floor(nextPosition.x) + playerWidth, nextPosition.x + 1);
             }
 
             //Wrap around to other side of the world
-            if (nextPosition.x > VoxelData.PlanetSizeInVoxels) {
+            if (nextPosition.x > Planet.PlanetSizeInVoxels) {
                 nextPosition.x = 0;
             } else if (nextPosition.x < 0) {
-                nextPosition.x = VoxelData.PlanetSizeInVoxels;
+                nextPosition.x = Planet.PlanetSizeInVoxels;
             }
 
-            if (nextPosition.z > VoxelData.PlanetSizeInVoxels) {
+            if (nextPosition.z > Planet.PlanetSizeInVoxels) {
                 nextPosition.z = 0;
             } else if (nextPosition.z < 0) {
-                nextPosition.z = VoxelData.PlanetSizeInVoxels;
+                nextPosition.z = Planet.PlanetSizeInVoxels;
             }
 
         } catch (System.Exception e) {
@@ -183,81 +186,111 @@ public class Player : MonoBehaviour {
         }
     }
 
-    private float checkDownSpeed(float downSpeed) {
+    private bool CheckBottom(float downSpeed) {
+        try {
 
-        if (planet.CheckForVoxel(new Vector3(transform.position.x - playerWidth, transform.position.y + downSpeed, transform.position.z - playerWidth)) ||
-        planet.CheckForVoxel(new Vector3(transform.position.x + playerWidth, transform.position.y + downSpeed, transform.position.z - playerWidth)) ||
-        planet.CheckForVoxel(new Vector3(transform.position.x + playerWidth, transform.position.y + downSpeed, transform.position.z + playerWidth)) ||
-        planet.CheckForVoxel(new Vector3(transform.position.x - playerWidth, transform.position.y + downSpeed, transform.position.z + playerWidth))) {
+            int y = Mathf.FloorToInt(transform.position.y + downSpeed);
+            int minX = Mathf.FloorToInt(transform.position.x - playerWidth);
+            int maxX = Mathf.FloorToInt(transform.position.x + playerWidth);
+            int minZ = Mathf.FloorToInt(transform.position.z - playerWidth);
+            int maxZ = Mathf.FloorToInt(transform.position.z + playerWidth);
 
-            isGrounded = true;
-            return 0;
+            if (HelperFunctions.CheckVoxelInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, minZ) ||
+                HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckVoxelInPlanet(planet, minX, y, maxZ)) {
 
-        } else {
-            isGrounded = false;
-            return downSpeed;
-        }
-    }
-
-    private float checkUpSpeed(float upSpeed) {
-        if (planet.CheckForVoxel(new Vector3(transform.position.x - playerWidth, transform.position.y + 2f + upSpeed, transform.position.z - playerWidth)) ||
-        planet.CheckForVoxel(new Vector3(transform.position.x + playerWidth, transform.position.y + 2f + upSpeed, transform.position.z - playerWidth)) ||
-        planet.CheckForVoxel(new Vector3(transform.position.x + playerWidth, transform.position.y + 2f + upSpeed, transform.position.z + playerWidth)) ||
-        planet.CheckForVoxel(new Vector3(transform.position.x - playerWidth, transform.position.y + 2f + upSpeed, transform.position.z + playerWidth))) {
-
-            return 0;
-
-        } else {
-
-            return upSpeed;
-        }
-    }
-
-    public bool front {
-        get {
-            if (planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y, nextPosition.z + playerWidth)) ||
-                planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y + 1f, nextPosition.z + playerWidth)))
-
+                isGrounded = true;
                 return true;
 
-            else
+            } else {
+                isGrounded = false;
                 return false;
+            }
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player CheckBottom: " + ex.Message);
+            return true;
         }
     }
 
-    public bool back {
-        get {
-            if (planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y, nextPosition.z - playerWidth)) ||
-                planet.CheckForVoxel(new Vector3(nextPosition.x, nextPosition.y + 1f, nextPosition.z - playerWidth)))
+    private bool CheckTop(float upSpeed) {
+        try {
 
+            int y = Mathf.FloorToInt(transform.position.y + 2f + upSpeed);
+            int minX = Mathf.FloorToInt(transform.position.x - playerWidth);
+            int maxX = Mathf.FloorToInt(transform.position.x + playerWidth);
+            int minZ = Mathf.FloorToInt(transform.position.z - playerWidth);
+            int maxZ = Mathf.FloorToInt(transform.position.z + playerWidth);
+
+            if (HelperFunctions.CheckVoxelInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, minZ) || 
+                HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckVoxelInPlanet(planet, minX, y, maxZ)) {
                 return true;
-
-            else
+            } else {
                 return false;
+            }
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player CheckTop: " + ex.Message);
+            return true;
         }
     }
 
-    public bool left {
-        get {
-            if (planet.CheckForVoxel(new Vector3(nextPosition.x - playerWidth, nextPosition.y, nextPosition.z)) ||
-                planet.CheckForVoxel(new Vector3(nextPosition.x - playerWidth, nextPosition.y + 1f, nextPosition.z)))
+    private bool CheckFront() {
+        try {
 
-                return true;
+            int x = Mathf.FloorToInt(nextPosition.x);
+            int y = Mathf.FloorToInt(nextPosition.y);
+            int z = Mathf.FloorToInt(nextPosition.z + playerWidth);
 
-            else
-                return false;
+            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player CheckTop: " + ex.Message);
+            return true;
         }
     }
 
-    public bool right {
-        get {
-            if (planet.CheckForVoxel(new Vector3(nextPosition.x + playerWidth, nextPosition.y, nextPosition.z)) ||
-                planet.CheckForVoxel(new Vector3(nextPosition.x + playerWidth, nextPosition.y + 1f, nextPosition.z)))
+    private bool CheckBack() {
+        try {
 
-                return true;
+            int x = Mathf.FloorToInt(nextPosition.x);
+            int y = Mathf.FloorToInt(nextPosition.y);
+            int z = Mathf.FloorToInt(nextPosition.z - playerWidth);
 
-            else
-                return false;
+            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player CheckBack: " + ex.Message);
+            return true;
+        }
+    }
+
+    private bool CheckLeft() {
+        try {
+
+            int x = Mathf.FloorToInt(nextPosition.x - playerWidth);
+            int y = Mathf.FloorToInt(nextPosition.y);
+            int z = Mathf.FloorToInt(nextPosition.z);
+
+            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player CheckLeft: " + ex.Message);
+            return true;
+        }
+    }
+
+    private bool CheckRight() {
+        try {
+
+            int x = Mathf.FloorToInt(nextPosition.x + playerWidth);
+            int y = Mathf.FloorToInt(nextPosition.y);
+            int z = Mathf.FloorToInt(nextPosition.z);
+
+            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player CheckRight: " + ex.Message);
+            return true;
         }
     }
 }

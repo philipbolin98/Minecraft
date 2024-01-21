@@ -5,6 +5,17 @@ using Noise;
 
 public class Planet : MonoBehaviour {
 
+    public static readonly int PlanetSizeInChunks = 16;
+    public static readonly int ViewDistanceInChunks = 4;
+    public static readonly int OceanFloorLevel = 20;
+    public static readonly int SeaLevel = 30;
+    public static readonly int MaxTerrainLevel = 50;
+    public static readonly int WorldHeight = 128;
+
+    public static int PlanetSizeInVoxels {
+        get { return PlanetSizeInChunks * VoxelData.ChunkSize; }
+    }
+
     public Material material;
     public GameObject player;
     public Vector3 spawnPosition;
@@ -15,10 +26,10 @@ public class Planet : MonoBehaviour {
     private OpenSimplex2S Noise4D;
     private int seed;
 
-    Chunk[,] chunks = new Chunk[VoxelData.PlanetSizeInChunks, VoxelData.PlanetSizeInChunks];
-    //List<Vector3> activeChunks = new List<Vector3>();
+    Chunk[,] chunks = new Chunk[PlanetSizeInChunks, PlanetSizeInChunks];
+    HashSet<Vector2Int> activeChunks = new HashSet<Vector2Int>();
 
-    public PlanetData planetData;
+    public PlanetData data;
 
     private void Start() {
         try {
@@ -29,24 +40,23 @@ public class Planet : MonoBehaviour {
             Random.InitState(seed);
             Noise4D = new OpenSimplex2S(seed);
 
-            planetData = SaveSystem.LoadPlanet(this.gameObject.name, seed);
-            planetData.LoadAllChunkData(this);
+            data = new PlanetData(this.gameObject.name, seed); //SaveSystem.LoadPlanet(this.gameObject.name, seed);
+            data.LoadAllChunkData(this);
 
             //if (planetData.initialLoad) {
             //    SaveSystem.SavePlanet(planetData);
             //    planetData.initialLoad = false;
             //}
 
+            spawnPosition = new Vector3(PlanetSizeInVoxels / 2, WorldHeight, PlanetSizeInVoxels / 2);
+
             GeneratePlanet();
-
-
-
-            spawnPosition = new Vector3(VoxelData.PlanetSizeInVoxels / 2, VoxelData.PlanetSizeInVoxels + 2f, VoxelData.PlanetSizeInVoxels / 2);
+            
             Instantiate(player);
             player.transform.position = spawnPosition;
 
         } catch (System.Exception ex) {
-
+            Debug.LogError("Error in Planet Start: " + ex.Message);
         }
     }
 
@@ -56,43 +66,23 @@ public class Planet : MonoBehaviour {
     public void GeneratePlanet() {
         try {
 
-            for (int x = 0; x < VoxelData.PlanetSizeInChunks; x++) {
-                for (int z = 0; z < VoxelData.PlanetSizeInChunks; z++) {
+            Vector2Int spawnChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(spawnPosition.x), Mathf.FloorToInt(spawnPosition.y));
 
-                    Vector2Int newChunkCoord = new Vector2Int(x, z);
-                    chunks[x, z] = new Chunk(newChunkCoord, this);
-                    //activeChunks.Add(newChunkCoord);
+            int minChunkX = spawnChunk.x - ViewDistanceInChunks;
+            int maxChunkX = spawnChunk.x + ViewDistanceInChunks;
+
+            int minChunkZ = spawnChunk.y - ViewDistanceInChunks;
+            int maxChunkZ = spawnChunk.y + ViewDistanceInChunks;
+
+            for (int x = minChunkX; x <= maxChunkX; x++) {
+                for (int z = minChunkZ; z <= maxChunkZ; z++) {
+                    chunks[x, z] = new Chunk(this, x, z);
+                    activeChunks.Add(new Vector2Int(x, z));
                 }
             }
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.GeneratePlanet: " + e.Message);
-        }
-    }
-
-    public void CheckViewDistance(Vector3 pos) {
-        try {
-
-
-
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.CheckViewDistance: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// Gets the block type of a voxel at a given position in the planet
-    /// </summary>
-    /// <param name="pos">The position of the voxel in the planet</param>
-    /// <returns>An integer representing the block type</returns>
-    public byte GetVoxel(Vector3Int pos) {
-        try {
-
-            return 0;
-
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.GetVoxel: " + e.Message);
-            return 0;
         }
     }
 
@@ -106,8 +96,8 @@ public class Planet : MonoBehaviour {
     public double TorusNoise(float x, float z) {
         try {
 
-            float nx = x / VoxelData.PlanetSizeInVoxels;
-            float nz = z / VoxelData.PlanetSizeInVoxels;
+            float nx = x / PlanetSizeInVoxels;
+            float nz = z / PlanetSizeInVoxels;
 
             float angle_x = VoxelData.TAU * nx;
             float angle_z = VoxelData.TAU * nz;
@@ -124,18 +114,6 @@ public class Planet : MonoBehaviour {
         } catch (System.Exception e) {
             Debug.LogError("Error in function Planet.TorusNoise: " + e.Message);
             return 0;
-        }
-    }
-
-    public bool CheckForVoxel(Vector3 pos) {
-        try {
-
-            byte blockType = planetData.GetVoxel(pos);
-            return this.blockTypes[blockType].isSolid;
-
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.CheckForVoxel: " + e.Message);
-            return false;
         }
     }
 }
@@ -157,7 +135,6 @@ public class BlockType {
     // Back, Front, Top, Bottom, Left, Right
 
     public int GetTextureID(int faceIndex) {
-
         try {
 
             switch (faceIndex) {

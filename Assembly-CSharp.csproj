@@ -66,6 +66,7 @@
     <Compile Include="Assets\Scripts\SaveSystem.cs" />
     <Compile Include="Assets\Scripts\Data\VoxelData.cs" />
     <Compile Include="Assets\Scripts\Data\ChunkData.cs" />
+    <Compile Include="Assets\Scripts\HelperFunctions.cs" />
     <Compile Include="Assets\Scripts\Planet.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
   </ItemGroup>
