@@ -1,10 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEditor.SearchService;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class Player : MonoBehaviour {
+
+    public float walkSpeed = 8f;
+    public float sprintSpeed = 16f;
+    public float jumpForce = 10f;
+    public float gravity = -9.8f;
 
     private bool isGrounded;
     private bool isSprinting;
@@ -12,11 +18,6 @@ public class Player : MonoBehaviour {
 
     private Transform cam;
     private Planet planet;
-
-    public float walkSpeed = 8f;
-    public float sprintSpeed = 16f;
-    public float jumpForce = 10f;
-    public float gravity = -9.8f;
 
     private float mouseSensitivity = 3f;
     private float playerWidth = .25f;
@@ -32,18 +33,18 @@ public class Player : MonoBehaviour {
 
     private float verticalMomentum = 0;
     private bool jumpRequest = false;
-    private bool renderNewChunks = false;
+
+    private TextMeshProUGUI playerCoordsUI;
 
     private void Start() {
         try {
 
             cam = GameObject.Find("Main Camera").transform;
             planet = GameObject.Find("Planet").GetComponent<Planet>();
+            playerCoordsUI = GameObject.Find("PlayerCoords").GetComponent<TextMeshProUGUI>();
 
             nextPosition = transform.position;
             currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
-
-            StartCoroutine(ChunkRenderer());
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.Start: " + e.Message);
@@ -63,12 +64,16 @@ public class Player : MonoBehaviour {
 
             transform.position = nextPosition;
 
+            playerCoordsUI.text = nextPosition.ToString();
+
             Vector2Int nextChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
 
             if (nextChunk.x != currentChunk.x || nextChunk.y != currentChunk.y) {
                 currentChunk = nextChunk;
-                renderNewChunks = true;
+                this.planet.CheckRenderDistance(nextPosition);
             }
+
+            this.planet.RenderChunks();
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.FixedUpdate: " + e.Message);
@@ -82,18 +87,6 @@ public class Player : MonoBehaviour {
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.Update: " + e.Message);
-        }
-    }
-
-    IEnumerator ChunkRenderer() {
-        while (true) {
-
-            if (renderNewChunks) {
-                renderNewChunks = false;
-                this.planet.GeneratePlanet(transform.position);
-            }
-
-            yield return null;
         }
     }
 
@@ -204,8 +197,8 @@ public class Player : MonoBehaviour {
             int minZ = Mathf.FloorToInt(transform.position.z - playerWidth);
             int maxZ = Mathf.FloorToInt(transform.position.z + playerWidth);
 
-            if (HelperFunctions.CheckVoxelInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, minZ) ||
-                HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckVoxelInPlanet(planet, minX, y, maxZ)) {
+            if (HelperFunctions.CheckBlockInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckBlockInPlanet(planet, maxX, y, minZ) ||
+                HelperFunctions.CheckBlockInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckBlockInPlanet(planet, minX, y, maxZ)) {
 
                 isGrounded = true;
                 return true;
@@ -230,8 +223,8 @@ public class Player : MonoBehaviour {
             int minZ = Mathf.FloorToInt(transform.position.z - playerWidth);
             int maxZ = Mathf.FloorToInt(transform.position.z + playerWidth);
 
-            if (HelperFunctions.CheckVoxelInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, minZ) || 
-                HelperFunctions.CheckVoxelInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckVoxelInPlanet(planet, minX, y, maxZ)) {
+            if (HelperFunctions.CheckBlockInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckBlockInPlanet(planet, maxX, y, minZ) || 
+                HelperFunctions.CheckBlockInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckBlockInPlanet(planet, minX, y, maxZ)) {
                 return true;
             } else {
                 return false;
@@ -250,7 +243,7 @@ public class Player : MonoBehaviour {
             int y = Mathf.FloorToInt(nextPosition.y);
             int z = Mathf.FloorToInt(nextPosition.z + playerWidth);
 
-            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Player CheckTop: " + ex.Message);
@@ -265,7 +258,7 @@ public class Player : MonoBehaviour {
             int y = Mathf.FloorToInt(nextPosition.y);
             int z = Mathf.FloorToInt(nextPosition.z - playerWidth);
 
-            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Player CheckBack: " + ex.Message);
@@ -280,7 +273,7 @@ public class Player : MonoBehaviour {
             int y = Mathf.FloorToInt(nextPosition.y);
             int z = Mathf.FloorToInt(nextPosition.z);
 
-            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Player CheckLeft: " + ex.Message);
@@ -295,7 +288,7 @@ public class Player : MonoBehaviour {
             int y = Mathf.FloorToInt(nextPosition.y);
             int z = Mathf.FloorToInt(nextPosition.z);
 
-            return HelperFunctions.CheckVoxelInPlanet(planet, x, y, z) || HelperFunctions.CheckVoxelInPlanet(planet, x, y + 1, z);
+            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Player CheckRight: " + ex.Message);

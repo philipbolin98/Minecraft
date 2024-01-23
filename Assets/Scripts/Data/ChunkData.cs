@@ -6,27 +6,15 @@ using static UnityEditor.PlayerSettings;
 [System.Serializable]
 public class ChunkData {
 
-    private int x;
-    private int z;
-
-    public Vector2Int pos {
-        get { 
-            return new Vector2Int(x, z);
-        }
-        set {
-            x = value.x;
-            z = value.y;
-        }
-    }
+    public Vector2Int pos;
 
     [HideInInspector]
-    public byte[,,] blocks = new byte[VoxelData.ChunkSize, Planet.WorldHeight, VoxelData.ChunkSize];
+    public BlockID[,,] blocks = new BlockID[VoxelData.ChunkSize, Planet.WorldHeight, VoxelData.ChunkSize];
 
-    public ChunkData(Vector2Int pos, Planet planet) {
+    public ChunkData(Planet planet, Vector2Int pos) {
         try {
 
             this.pos = pos;
-            Popuplate(planet);
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function ChunkData.Constructor: " + e.Message);
@@ -45,31 +33,33 @@ public class ChunkData {
                     int voxelX = (VoxelData.ChunkSize * pos.x) + x;
                     int voxelZ = (VoxelData.ChunkSize * pos.y) + z;
 
-                    byte voxelValue;
+                    
                     float noiseValue = (float)planet.TorusNoise(voxelX, voxelZ);
 
                     for (int y = 0; y < Planet.WorldHeight; y++) {
 
                         int terrainHeight = Planet.OceanFloorLevel + Mathf.FloorToInt((Planet.MaxTerrainLevel - Planet.OceanFloorLevel) * noiseValue);
 
-                        if (!HelperFunctions.IsVoxelInPlanet(voxelX, y, voxelZ) || y > terrainHeight) { //Air for everything above the surface
-                            voxelValue = 0;
+                        BlockID blockID;
+
+                        if (!HelperFunctions.IsBlockInPlanet(voxelX, y, voxelZ) || y > terrainHeight) { //Air for everything above the surface
+                            blockID = BlockID.Air;
                         } else if (y < 1) { //Bedrock for y = 0
-                            voxelValue = 1;
+                            blockID = BlockID.Bedrock;
                         } else if (y == terrainHeight) { //Grass for the top layer
-                            voxelValue = 3;
+                            blockID = BlockID.Grass;
                         } else if (y > terrainHeight - 4) { //Dirt for next 3 layers
-                            voxelValue = 4;
+                            blockID = BlockID.Dirt;
                         } else { //Everything else stone
-                            voxelValue = 2;
+                            blockID = BlockID.Stone;
                         }
 
-                        blocks[x, y, z] = voxelValue;
+                        blocks[x, y, z] = blockID;
                     }
                 }
             }
 
-            planet.data.AddToModifiedChunkList(this);
+            //planet.data.AddToModifiedChunkList(this);
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function ChunkData.Popuplate: " + e.Message);

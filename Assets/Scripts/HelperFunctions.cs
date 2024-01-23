@@ -31,13 +31,24 @@ public static class HelperFunctions {
     /// <param name="blockX"></param>
     /// <param name="blockZ"></param>
     /// <returns></returns>
-    public static Vector3Int GetNormalizedBlockPos(int blockX, int blockY, int blockZ) {
+    public static Vector3Int GetNormalizedBlockPosInPlanet(int blockX, int blockY, int blockZ) {
         try {
 
             return new Vector3Int(Modulo(blockX, Planet.PlanetSizeInVoxels), blockY, Modulo(blockZ, Planet.PlanetSizeInVoxels));
 
         } catch (System.Exception ex) {
-            Debug.LogError("Error in HelperFunctions GetNormalizedBlockPos: " + ex.Message);
+            Debug.LogError("Error in HelperFunctions GetNormalizedBlockPosInPlanet: " + ex.Message);
+            return new Vector3Int();
+        }
+    }
+
+    public static Vector3Int GetNormalizedBlockPosInChunk(Vector3Int blockPosInChunk) {
+        try {
+
+            return new Vector3Int(Modulo(blockPosInChunk.x, VoxelData.ChunkSize), blockPosInChunk.y, Modulo(blockPosInChunk.z, VoxelData.ChunkSize));
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in HelperFunctions GetNormalizedBlockPosInChunk: " + ex.Message);
             return new Vector3Int();
         }
     }
@@ -52,6 +63,22 @@ public static class HelperFunctions {
         try {
 
             return new Vector2Int(Modulo(chunkX, Planet.PlanetSizeInChunks), Modulo(chunkZ, Planet.PlanetSizeInChunks));
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in HelperFunctions GetNormalizedChunkPos: " + ex.Message);
+            return new Vector2Int();
+        }
+    }
+
+    /// <summary>
+    /// Overload of the previous function that takes a Vector2Int
+    /// </summary>
+    /// <param name="chunkPos"></param>
+    /// <returns></returns>
+    public static Vector2Int GetNormalizedChunkPos(Vector2Int chunkPos) {
+        try {
+
+            return GetNormalizedChunkPos(chunkPos.x, chunkPos.y);
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions GetNormalizedChunkPos: " + ex.Message);
@@ -78,27 +105,21 @@ public static class HelperFunctions {
     }
 
     /// <summary>
-    /// Checks if there is a block at a given position in a chunk
+    /// Checks if a block at a given position within a chunk is solid
     /// </summary>
     /// <param name="chunk"></param>
     /// <param name="blockXInChunk"></param>
     /// <param name="blockY"></param>
     /// <param name="blockZInChunk"></param>
     /// <returns></returns>
-    public static bool CheckVoxelInChunk(Chunk chunk, int blockXInChunk, int blockY, int blockZInChunk) {
+    public static bool CheckBlockInChunk(Chunk chunk, int blockXInChunk, int blockY, int blockZInChunk) {
         try {
 
-            if (!IsVoxelInChunk(blockXInChunk, blockY, blockZInChunk)) {
-                int blockX = (VoxelData.ChunkSize * chunk.pos.x) + blockXInChunk;
-                int blockZ = (VoxelData.ChunkSize * chunk.pos.y) + blockZInChunk;
-                return CheckVoxelInPlanet(chunk.planet, blockX, blockY, blockZ);
-            }
-
-            byte blockType = chunk.data.blocks[blockXInChunk, blockY, blockZInChunk];
-            return chunk.planet.blockTypes[blockType].isSolid;
+            BlockID blockID = chunk.data.blocks[blockXInChunk, blockY, blockZInChunk];
+            return blockID != BlockID.Air;
 
         } catch (System.Exception ex) {
-            Debug.LogError("Error in HelperFunctions CheckVoxelInChunk: " + ex.Message);
+            Debug.LogError("Error in HelperFunctions CheckBlockInChunk: " + ex.Message);
             return false;
         }
     }
@@ -111,11 +132,11 @@ public static class HelperFunctions {
     /// <param name="blockY"></param>
     /// <param name="blockZ"></param>
     /// <returns></returns>
-    public static bool CheckVoxelInPlanet(Planet planet, int blockX, int blockY, int blockZ) {
+    public static bool CheckBlockInPlanet(Planet planet, int blockX, int blockY, int blockZ) {
         try {
 
-            byte blockType = GetVoxel(planet, blockX, blockY, blockZ);
-            return planet.blockTypes[blockType].isSolid;
+            BlockID blockID = GetBlockID(planet, blockX, blockY, blockZ);
+            return blockID != BlockID.Air;
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions CheckVoxelInPlanet: " + ex.Message);
@@ -131,29 +152,34 @@ public static class HelperFunctions {
     /// <param name="blockY"></param>
     /// <param name="blockZ"></param>
     /// <returns></returns>
-    public static byte GetVoxel(Planet planet, int blockX, int blockY, int blockZ) {
+    public static BlockID GetBlockID(Planet planet, int blockX, int blockY, int blockZ) {
         try {
 
-            if (!IsVoxelInPlanet(blockX, blockY, blockZ)) {
-                return 0;
+            if (!IsBlockInPlanet(blockX, blockY, blockZ)) {
+                return BlockID.Air;
             }
 
-            Vector3Int normalizedBlockPos = GetNormalizedBlockPos(blockX, blockY, blockZ);
+            Vector3Int normalizedBlockPos = GetNormalizedBlockPosInPlanet(blockX, blockY, blockZ);
             blockX = normalizedBlockPos.x;
             blockZ = normalizedBlockPos.z;
 
             Vector2Int chunkPos = GetChunkPosFromBlockPos(blockX, blockY, blockZ);
             chunkPos = GetNormalizedChunkPos(chunkPos.x, chunkPos.y);
-            ChunkData chunkData = planet.data.RequestChunk(chunkPos.x, chunkPos.y);
+
+            Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
+
+            if (chunk == null || !chunk.isDataPopulated) {
+                return BlockID.Air;
+            }
 
             int blockXInChunk = blockX % VoxelData.ChunkSize;
             int blockZInChunk = blockZ % VoxelData.ChunkSize;
 
-            return chunkData.blocks[blockXInChunk, blockY, blockZInChunk];
+            return chunk.data.blocks[blockXInChunk, blockY, blockZInChunk];
 
         } catch (System.Exception ex) {
-            Debug.LogError("Error in HelperFunctions GetVoxel: " + ex.Message); 
-            return 0;
+            Debug.LogError("Error in HelperFunctions GetBlockID: " + ex.Message); 
+            return BlockID.Air;
         }
     }
 
@@ -165,13 +191,13 @@ public static class HelperFunctions {
     /// <param name="y"></param>
     /// <param name="z"></param>
     /// <returns></returns>
-    public static bool IsVoxelInPlanet(int x, int y, int z) {
+    public static bool IsBlockInPlanet(int x, int y, int z) {
         try {
 
             return y >= 0 && y < Planet.WorldHeight;
 
         } catch (System.Exception ex) {
-            Debug.LogError("Error in HelperFunctions IsVoxelInPlanet: " + ex.Message);
+            Debug.LogError("Error in HelperFunctions IsBlockInPlanet: " + ex.Message);
             return false;
         }
     }
@@ -183,13 +209,56 @@ public static class HelperFunctions {
     /// <param name="y"></param>
     /// <param name="z"></param>
     /// <returns></returns>
-    public static bool IsVoxelInChunk(int x, int y, int z) {
+    public static bool IsBlockInChunk(int x, int y, int z) {
         try {
 
             return x >= 0 && x < VoxelData.ChunkSize && y >= 0 && y < Planet.WorldHeight && z >= 0 && z < VoxelData.ChunkSize;
 
         } catch (System.Exception ex) {
-            Debug.LogError("Error in HelperFunctions IsVoxelInChunk: " + ex.Message);
+            Debug.LogError("Error in HelperFunctions IsBlockInChunk: " + ex.Message);
+            return false;
+        }
+    }
+
+    public static Chunk GetChunkFromBlockPos(Planet planet, int blockX, int blockY, int blockZ) {
+        try {
+            
+            if (!IsBlockInPlanet(blockX, blockY, blockZ)) {
+                return null;
+            }
+
+            Vector3Int normalizedBlockPos = GetNormalizedBlockPosInPlanet(blockX, blockY, blockZ);
+            Vector2Int chunkPos = GetChunkPosFromBlockPos(normalizedBlockPos.x, normalizedBlockPos.y, normalizedBlockPos.z);
+            Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
+            return chunk;
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in HelperFunctions GetChunkFromBlockPos: " + ex.Message);
+            return null;
+        }
+    }
+
+    public static bool CanChunkMeshBeCreated(Planet planet, Vector2Int chunkPos) {
+        try {
+
+            foreach (Vector2Int offset in Chunk.ChunksToCheckForMeshCreation) {
+
+                Vector2Int normalizedChunkPos = GetNormalizedChunkPos(chunkPos + offset);
+                Chunk chunk = planet.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
+
+                if (chunk == null) {
+                    return false;
+                }
+
+                if (!chunk.isDataPopulated) {
+                    return false;
+                }
+            }
+
+            return true;
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in HelperFunctions CanChunkMeshBeCreated: " + ex.Message);
             return false;
         }
     }
