@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,9 +17,9 @@ public class Chunk {
     public Planet planet;
     public ChunkData data;
 
-    List<Vector3> vertices = new List<Vector3>();
-    List<int> triangles = new List<int>();
-    List<Vector2> uvs = new List<Vector2>();
+    private List<Vector3> vertices = new List<Vector3>();
+    private List<int> triangles = new List<int>();
+    private List<Vector2> uvs = new List<Vector2>();
 
     private int vertexIndex = 0;
 
@@ -39,11 +38,30 @@ public class Chunk {
 
             this.pos = pos;
             this.planet = planet;
-            this.data = new ChunkData(planet, pos);
+            this.data = new ChunkData(planet);
             planet.chunks[pos.x, pos.y] = this;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Chunk.Constructor: " + e.Message);
+        }
+    }
+
+    /// <summary>
+    /// Popuplates the current chunk data with all its voxels
+    /// </summary>
+    public void Popuplate(Planet planet) {
+        try {
+
+            for (int x = 0; x < VoxelData.ChunkSize; x++) {
+                for (int z = 0; z < VoxelData.ChunkSize; z++) {
+                    this.planet.terrainGenerator.GenerateTerrain(this, x, z);
+                }
+            }
+
+            //planet.data.AddToModifiedChunkList(this);
+
+        } catch (System.Exception e) {
+            Debug.LogError("Error in function ChunkData.Popuplate: " + e.Message);
         }
     }
 
@@ -53,7 +71,7 @@ public class Chunk {
     public void CreateMeshData() {
         try {
 
-            for (int y = 0; y < Planet.WorldHeight; y++) {
+            for (int y = 0; y < this.planet.WorldHeight; y++) {
                 for (int x = 0; x < VoxelData.ChunkSize; x++) {
                     for (int z = 0; z < VoxelData.ChunkSize; z++) {
                         AddVoxelDataToChunk(x, y, z);
@@ -207,6 +225,23 @@ public class Chunk {
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Chunk Enable: " + ex.Message);
+        }
+    }
+}
+
+[System.Serializable]
+public class ChunkData {
+
+    [HideInInspector]
+    public BlockID[,,] blocks;
+
+    public ChunkData(Planet planet) {
+        try {
+
+            this.blocks = new BlockID[VoxelData.ChunkSize, planet.WorldHeight, VoxelData.ChunkSize];
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in ChunkData Constructor: " + ex.Message);
         }
     }
 }

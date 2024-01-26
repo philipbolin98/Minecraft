@@ -1,7 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
-using UnityEditor.SearchService;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -34,20 +31,22 @@ public class Player : MonoBehaviour {
     private float verticalMomentum = 0;
     private bool jumpRequest = false;
 
-    private TextMeshProUGUI playerCoordsUI;
+    private TextMeshProUGUI playerBlockCoordsUI;
+    private TextMeshProUGUI playerChunkCoordsUI;
 
     private void Start() {
         try {
 
             cam = GameObject.Find("Main Camera").transform;
             planet = GameObject.Find("Planet").GetComponent<Planet>();
-            playerCoordsUI = GameObject.Find("PlayerCoords").GetComponent<TextMeshProUGUI>();
+            playerBlockCoordsUI = GameObject.Find("PlayerBlockCoords").GetComponent<TextMeshProUGUI>();
+            playerChunkCoordsUI = GameObject.Find("PlayerChunkCoords").GetComponent<TextMeshProUGUI>();
 
             nextPosition = transform.position;
             currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Player.Start: " + e.Message);
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player Start: " + ex.Message);
         }
     }
 
@@ -64,8 +63,6 @@ public class Player : MonoBehaviour {
 
             transform.position = nextPosition;
 
-            playerCoordsUI.text = nextPosition.ToString();
-
             Vector2Int nextChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
 
             if (nextChunk.x != currentChunk.x || nextChunk.y != currentChunk.y) {
@@ -75,8 +72,11 @@ public class Player : MonoBehaviour {
 
             this.planet.RenderChunks();
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Player.FixedUpdate: " + e.Message);
+            playerBlockCoordsUI.text = nextPosition.ToString();
+            playerChunkCoordsUI.text = nextChunk.ToString();
+
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player FixedUpdate: " + ex.Message);
         }
     }
 
@@ -85,8 +85,8 @@ public class Player : MonoBehaviour {
 
             GetPlayerInputs();
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Player.Update: " + e.Message);
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Player Update: " + ex.Message);
         }
     }
 

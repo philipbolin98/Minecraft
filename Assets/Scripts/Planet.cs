@@ -1,62 +1,53 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
-using Noise;
 using System.Linq;
 
 public class Planet : MonoBehaviour {
 
-    public static readonly int PlanetSizeInChunks = 128;
-    public static readonly int ViewDistanceInChunks = 4;
-    public static readonly int OceanFloorLevel = 20;
-    public static readonly int SeaLevel = 30;
-    public static readonly int MaxTerrainLevel = 50;
-    public static readonly int WorldHeight = 128;
-
-    public static int PlanetSizeInVoxels {
-        get { return PlanetSizeInChunks * VoxelData.ChunkSize; }
-    }
-
+    public int PlanetSizeInChunks;
+    [HideInInspector]
+    public int PlanetSizeInVoxels;
+    public int ViewDistanceInChunks;
+    public int WorldHeight;
+    
     public GameObject player;
     public GameObject chunkPrefab;
     public Vector3 spawnPosition;
     public Block[] blockTypes;
 
-    private OpenSimplex2S Noise4D;
-    private int seed;
-
-    public Chunk[,] chunks = new Chunk[PlanetSizeInChunks, PlanetSizeInChunks];
-    public List<Vector2Int> activeChunks = new List<Vector2Int>();
+    public Chunk[,] chunks;
+    private List<Vector2Int> activeChunks = new List<Vector2Int>();
     public Queue<GameObject> unusedChunkObjects = new Queue<GameObject>();
 
-    public PlanetData data;
+    private Thread chunkUpdateThread;
 
-    public Thread chunkUpdateThread;
+    private List<Vector2Int> chunksToPopulate = new List<Vector2Int>();
+    private object chunksToPopulateLock = new object();
 
-    public List<Vector2Int> chunksToPopulate = new List<Vector2Int>();
-    public object chunksToPopulateLock = new object();
+    private List<Vector2Int> chunksToMesh = new List<Vector2Int>();
+    private object chunksToMeshLock = new object();
 
-    public List<Vector2Int> chunksToMesh = new List<Vector2Int>();
-    public object chunksToMeshLock = new object();
+    [HideInInspector]
+    public TerrainGenerator terrainGenerator;
 
     private void Start() {
         try {
 
-            int seed = 17; //Mathf.FloorToInt(Random.Range(0f, 1f) * 100);
+            this.PlanetSizeInVoxels = PlanetSizeInChunks * VoxelData.ChunkSize;
 
-            this.seed = seed;
-            Random.InitState(seed);
-            Noise4D = new OpenSimplex2S(seed);
+            this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
 
-            this.data = new PlanetData(this.gameObject.name, seed); //SaveSystem.LoadPlanet(this.gameObject.name, seed);
+            this.spawnPosition = new Vector3(1, 100, 1); //Need to read player spawn position from file once saving is implemented
 
-            this.spawnPosition = new Vector3(1, WorldHeight, 1); //Need to read player spawn position from file once saving is implemented
+            int seed = 17;
+            this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
+            this.terrainGenerator.Initialize(seed);
 
             this.chunkUpdateThread = new Thread(new ThreadStart(GenerateChunks));
             this.chunkUpdateThread.Start();
 
-            CheckRenderDistance(spawnPosition);
+            CheckRenderDistance(spawnPosition); //Need to do one initial check when the planet loads
             
             Instantiate(this.player);
             this.player.transform.position = spawnPosition;
@@ -91,7 +82,7 @@ public class Planet : MonoBehaviour {
 
                 if (chunkPos.x <= minChunkX || chunkPos.x >= maxChunkX || chunkPos.y <= minChunkZ || chunkPos.y >= maxChunkZ) {
 
-                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(chunkPos.x, chunkPos.y);
+                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
                     Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                     if (chunk != null && chunk.isRendered) {
@@ -106,7 +97,7 @@ public class Planet : MonoBehaviour {
                 for (int z = minChunkZ; z <= maxChunkZ; z++) {
 
                     Vector2Int chunkPos = new Vector2Int(x, z);
-                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(chunkPos.x, chunkPos.y);
+                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
                     Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                     if (chunk == null) {
@@ -155,7 +146,7 @@ public class Planet : MonoBehaviour {
 
                     foreach (Vector2Int normalizedChunkPos in chunks) {
                         Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
-                        chunk.data.Popuplate(this);
+                        chunk.Popuplate(this);
                         chunk.isDataPopulated = true;
                     }
                 }
@@ -195,7 +186,7 @@ public class Planet : MonoBehaviour {
         try {
 
             foreach (Vector2Int chunkPos in this.activeChunks) {
-                Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(chunkPos.x, chunkPos.y);
+                Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
                 Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                 if (!chunk.isRendered && chunk.isDataPopulated && chunk.isMeshGenerated) {
@@ -206,38 +197,7 @@ public class Planet : MonoBehaviour {
         } catch (System.Exception ex) {
             Debug.LogError("Error in Planet GenerateChunks: " + ex.Message);
         }
-    }
-
-    /// <summary>
-    /// Function that uses simplex noise to generate a terrain height y at a given x and z position in the planet
-    /// The y levels generated are continuous along the xz plane so that the planet terrain seamlessly loops
-    /// </summary>
-    /// <param name="x">The x coord in the planet</param>
-    /// <param name="z">The z coord in the planet</param>
-    /// <returns></returns>
-    public double TorusNoise(float x, float z) {
-        try {
-
-            float nx = x / PlanetSizeInVoxels;
-            float nz = z / PlanetSizeInVoxels;
-
-            float angle_x = VoxelData.TAU * nx;
-            float angle_z = VoxelData.TAU * nz;
-
-            double cosx = Mathf.Cos(angle_x) / VoxelData.TAU;
-            double sinx = Mathf.Sin(angle_x) / VoxelData.TAU;
-            double cosz = Mathf.Cos(angle_z) / VoxelData.TAU;
-            double sinz = Mathf.Sin(angle_z) / VoxelData.TAU;
-
-            double noiseValue = Noise4D.Noise4_Classic(cosx, sinx, cosz, sinz);
-            noiseValue = (noiseValue + 1) / 2;
-            return noiseValue;
-
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Planet.TorusNoise: " + e.Message);
-            return 0;
-        }
-    }
+    }  
 }
 
 [System.Serializable]

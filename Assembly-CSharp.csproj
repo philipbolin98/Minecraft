@@ -62,13 +62,12 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\SimplexNoise.cs" />
     <Compile Include="Assets\Scripts\Player.cs" />
-    <Compile Include="Assets\Scripts\Data\PlanetData.cs" />
     <Compile Include="Assets\Scripts\SaveSystem.cs" />
     <Compile Include="Assets\Scripts\Data\VoxelData.cs" />
-    <Compile Include="Assets\Scripts\Data\ChunkData.cs" />
     <Compile Include="Assets\Scripts\HelperFunctions.cs" />
     <Compile Include="Assets\Scripts\Planet.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
+    <Compile Include="Assets\Scripts\TerrainGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />

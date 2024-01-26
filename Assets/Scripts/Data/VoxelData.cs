@@ -4,7 +4,6 @@ public class VoxelData {
 
     public static readonly int ChunkSize = 16;
     public static readonly int TextureAtlasSizeInBlocks = 4;
-    public static readonly float TAU = 2 * Mathf.PI;
 
     public static float NormalizedBlockTextureSize {
         get { return 1f / TextureAtlasSizeInBlocks; }
