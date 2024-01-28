@@ -5,12 +5,14 @@ using System.Linq;
 
 public class Planet : MonoBehaviour {
 
+    public int seed;
     public int PlanetSizeInChunks;
     [HideInInspector]
     public int PlanetSizeInVoxels;
     public int ViewDistanceInChunks;
     public int WorldHeight;
-    
+    public float gravity = -40f;
+
     public GameObject player;
     public GameObject chunkPrefab;
     public Vector3 spawnPosition;
@@ -31,6 +33,8 @@ public class Planet : MonoBehaviour {
     [HideInInspector]
     public TerrainGenerator terrainGenerator;
 
+    private bool gameRunning = true;
+
     private void Start() {
         try {
 
@@ -38,11 +42,9 @@ public class Planet : MonoBehaviour {
 
             this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
 
-            this.spawnPosition = new Vector3(1, 100, 1); //Need to read player spawn position from file once saving is implemented
-
-            int seed = 17;
+            this.seed = Random.Range(0, int.MaxValue);
             this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
-            this.terrainGenerator.Initialize(seed);
+            this.terrainGenerator.Initialize(this.seed);
 
             this.chunkUpdateThread = new Thread(new ThreadStart(GenerateChunks));
             this.chunkUpdateThread.Start();
@@ -58,7 +60,11 @@ public class Planet : MonoBehaviour {
     }
 
     private void OnDisable() {
-        chunkUpdateThread.Abort();
+        try {
+            gameRunning = false;
+        } catch (System.Exception ex) {
+            Debug.LogError("Error in Planet OnDisable: " + ex.Message);
+        }
     }
 
     public void CheckRenderDistance(Vector3 pos) {
@@ -132,7 +138,7 @@ public class Planet : MonoBehaviour {
     }
 
     public void GenerateChunks() {
-        while (true) {
+        while (gameRunning) {
             try {
 
                 if (chunksToPopulate.Count > 0) {
@@ -249,5 +255,7 @@ public enum BlockID {
     Bedrock = 1,
     Stone = 2,
     Grass = 3,
-    Dirt = 4
+    Dirt = 4,
+    Water = 5,
+    Sand = 6
 }

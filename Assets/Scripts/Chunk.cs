@@ -19,6 +19,7 @@ public class Chunk {
 
     private List<Vector3> vertices = new List<Vector3>();
     private List<int> triangles = new List<int>();
+    private List<int> waterTriangles = new List<int>();
     private List<Vector2> uvs = new List<Vector2>();
 
     private int vertexIndex = 0;
@@ -102,24 +103,13 @@ public class Chunk {
             Vector3Int blockPosInChunk = new Vector3Int(blockXInChunk, blockYInChunk, blockZInChunk);
             Vector3Int blockPosInPlanet = new Vector3Int(this.pos.x * VoxelData.ChunkSize + blockXInChunk, blockYInChunk, this.pos.y * VoxelData.ChunkSize + blockZInChunk);
 
-            for (int face = 0; face < 6; face++) { //Loop over all 6 faces of the block
+            if (blockID == BlockID.Water) {
 
+                int face = (int)VoxelData.BlockFace.Top;
                 Vector3Int faceCheck = VoxelData.FaceChecks[face];
-                Vector3Int neighborPosInPlanet = blockPosInPlanet + faceCheck;
-
-                Chunk chunk = HelperFunctions.GetChunkFromBlockPos(this.planet, neighborPosInPlanet.x, neighborPosInPlanet.y, neighborPosInPlanet.z);
-
-                if (chunk == null) {
-                    continue;
-                }
-
-                //Since the current block is solid, we need to check if each adjacent block is solid
-                //If a neighboring block is also solid, we do not need to render their shared face
-                //Otherwise, render the face that is adjacent to the air
                 Vector3Int neighborPosInChunk = HelperFunctions.GetNormalizedBlockPosInChunk(blockPosInChunk + faceCheck);
-                bool isSolid = HelperFunctions.CheckBlockInChunk(chunk, neighborPosInChunk.x, neighborPosInChunk.y, neighborPosInChunk.z);
 
-                if (!isSolid) {
+                if (neighborPosInChunk.y == this.planet.WorldHeight - 1 || this.data.blocks[neighborPosInChunk.x, neighborPosInChunk.y, neighborPosInChunk.z] != BlockID.Water) {
 
                     for (int i = 0; i < 4; i++) {
                         vertices.Add(blockPosInChunk + VoxelData.Vertices[VoxelData.Triangles[face, i]]);
@@ -129,17 +119,57 @@ public class Chunk {
                     int textureID = block.GetTextureID(face);
                     AddTexture(textureID);
 
-                    triangles.Add(vertexIndex);
-                    triangles.Add(vertexIndex + 1);
-                    triangles.Add(vertexIndex + 2);
-                    triangles.Add(vertexIndex + 2);
-                    triangles.Add(vertexIndex + 1);
-                    triangles.Add(vertexIndex + 3);
+                    waterTriangles.Add(vertexIndex);
+                    waterTriangles.Add(vertexIndex + 1);
+                    waterTriangles.Add(vertexIndex + 2);
+                    waterTriangles.Add(vertexIndex + 2);
+                    waterTriangles.Add(vertexIndex + 1);
+                    waterTriangles.Add(vertexIndex + 3);
 
                     vertexIndex += 4;
                 }
-            }
 
+            } else {
+
+                for (int face = 0; face < 6; face++) { //Loop over all 6 faces of the block
+
+                    Vector3Int faceCheck = VoxelData.FaceChecks[face];
+                    Vector3Int neighborPosInPlanet = blockPosInPlanet + faceCheck;
+
+                    Chunk chunk = HelperFunctions.GetChunkFromBlockPos(this.planet, neighborPosInPlanet.x, neighborPosInPlanet.y, neighborPosInPlanet.z);
+
+                    if (chunk == null) {
+                        continue;
+                    }
+
+                    //Since the current block is solid, we need to check if each adjacent block is solid
+                    //If a neighboring block is also solid, we do not need to render their shared face
+                    //Otherwise, render the face that is adjacent to the air
+                    Vector3Int neighborPosInChunk = HelperFunctions.GetNormalizedBlockPosInChunk(blockPosInChunk + faceCheck);
+                    bool isSolid = HelperFunctions.CheckBlockInChunk(chunk, neighborPosInChunk.x, neighborPosInChunk.y, neighborPosInChunk.z);
+
+                    if (!isSolid) {
+
+                        for (int i = 0; i < 4; i++) {
+                            vertices.Add(blockPosInChunk + VoxelData.Vertices[VoxelData.Triangles[face, i]]);
+                        }
+
+                        Block block = this.planet.blockTypes[(byte)blockID];
+                        int textureID = block.GetTextureID(face);
+                        AddTexture(textureID);
+
+                        triangles.Add(vertexIndex);
+                        triangles.Add(vertexIndex + 1);
+                        triangles.Add(vertexIndex + 2);
+                        triangles.Add(vertexIndex + 2);
+                        triangles.Add(vertexIndex + 1);
+                        triangles.Add(vertexIndex + 3);
+
+                        vertexIndex += 4;
+                    }
+                }
+            }
+            
         } catch (System.Exception e) {
             Debug.LogError("Error in function Chunk.AddVoxelDataToChunk: " + e.Message);
         }
@@ -149,8 +179,10 @@ public class Chunk {
         try {
 
             Mesh mesh = new Mesh();
+            mesh.subMeshCount = 2;
             mesh.vertices = vertices.ToArray();
-            mesh.triangles = triangles.ToArray();
+            mesh.SetTriangles(triangles.ToArray(), 0);
+            mesh.SetTriangles(waterTriangles.ToArray(), 1);
             mesh.uv = uvs.ToArray();
 
             mesh.RecalculateNormals();

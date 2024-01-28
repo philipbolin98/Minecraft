@@ -53,12 +53,22 @@ public class TerrainGenerator : MonoBehaviour {
 
                 BlockID blockID;
 
-                if (!HelperFunctions.IsBlockInPlanet(planet, y) || y > terrainHeight) { //Air for everything above the surface
+                if (!HelperFunctions.IsBlockInPlanet(planet, y)) { //Air for everything above the surface
                     blockID = BlockID.Air;
+                } else if (y > terrainHeight) {
+                    if (y < SeaLevel) {
+                        blockID = BlockID.Water;
+                    } else {
+                        blockID = BlockID.Air;
+                    }
                 } else if (y < 1) { //Bedrock for y = 0
                     blockID = BlockID.Bedrock;
                 } else if (y == terrainHeight) { //Grass for the top layer
-                    blockID = BlockID.Grass;
+                    if (y < SeaLevel + 2) {
+                        blockID = BlockID.Sand;
+                    } else {
+                        blockID = BlockID.Grass;
+                    }
                 } else if (y > terrainHeight - 4) { //Dirt for next 3 layers
                     blockID = BlockID.Dirt;
                 } else { //Everything else stone

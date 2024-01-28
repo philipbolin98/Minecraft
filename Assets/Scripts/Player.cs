@@ -1,13 +1,13 @@
 using TMPro;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class Player : MonoBehaviour {
 
-    public float walkSpeed = 8f;
-    public float sprintSpeed = 16f;
-    public float jumpForce = 10f;
-    public float gravity = -9.8f;
+    public float walkSpeed;
+    public float sprintSpeed;
+    public float jumpForce;
 
     private bool isGrounded;
     private bool isSprinting;
@@ -26,7 +26,7 @@ public class Player : MonoBehaviour {
 
     [SerializeField]
     private Vector3 velocity;
-    private Vector3 nextPosition;
+    private Vector3 currentPosition;
 
     private float verticalMomentum = 0;
     private bool jumpRequest = false;
@@ -42,8 +42,8 @@ public class Player : MonoBehaviour {
             playerBlockCoordsUI = GameObject.Find("PlayerBlockCoords").GetComponent<TextMeshProUGUI>();
             playerChunkCoordsUI = GameObject.Find("PlayerChunkCoords").GetComponent<TextMeshProUGUI>();
 
-            nextPosition = transform.position;
-            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
+            currentPosition = transform.position;
+            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Player Start: " + ex.Message);
@@ -61,19 +61,19 @@ public class Player : MonoBehaviour {
             transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotationY, transform.eulerAngles.z);
             cam.transform.eulerAngles = new Vector3(rotationX, cam.transform.eulerAngles.y, cam.transform.eulerAngles.z);
 
-            transform.position = nextPosition;
+            transform.position = currentPosition;
 
-            Vector2Int nextChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(nextPosition.x), Mathf.FloorToInt(nextPosition.y), Mathf.FloorToInt(nextPosition.z));
+            Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
 
-            if (nextChunk.x != currentChunk.x || nextChunk.y != currentChunk.y) {
-                currentChunk = nextChunk;
-                this.planet.CheckRenderDistance(nextPosition);
+            if (newChunk.x != currentChunk.x || newChunk.y != currentChunk.y) {
+                currentChunk = newChunk;
+                this.planet.CheckRenderDistance(currentPosition);
             }
 
             this.planet.RenderChunks();
 
-            playerBlockCoordsUI.text = nextPosition.ToString();
-            playerChunkCoordsUI.text = nextChunk.ToString();
+            playerBlockCoordsUI.text = currentPosition.ToString();
+            playerChunkCoordsUI.text = currentChunk.ToString();
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in Player FixedUpdate: " + ex.Message);
@@ -106,18 +106,16 @@ public class Player : MonoBehaviour {
         try {
 
             //Affect vertical momentum with velocity
-            if (verticalMomentum > gravity) {
-                verticalMomentum += Time.fixedDeltaTime * gravity;
+            if (verticalMomentum > this.planet.gravity) {
+                verticalMomentum += Time.fixedDeltaTime * this.planet.gravity;
             }
 
-            if (isSprinting) {
-                velocity = ((transform.forward * vertical) + (transform.right * horizontal)) * Time.deltaTime * sprintSpeed;
-            } else {
-                velocity = ((transform.forward * vertical) + (transform.right * horizontal)) * Time.deltaTime * walkSpeed;
-            }
+            float speedModifier = isSprinting ? sprintSpeed : walkSpeed;
+            velocity = speedModifier * Time.deltaTime * ((transform.forward * vertical) + (transform.right * horizontal));
+
 
             //Apply vertical momentum
-            velocity += Vector3.up * verticalMomentum * Time.fixedDeltaTime;
+            velocity += Time.fixedDeltaTime * verticalMomentum * Vector3.up;
 
             if (velocity.y < 0 && CheckBottom(velocity.y)) {
                 velocity.y = 0;
@@ -125,32 +123,38 @@ public class Player : MonoBehaviour {
                 velocity.y = 0;
             }
 
-            nextPosition += velocity;
+            Vector3 nextPosition = this.currentPosition + velocity;
 
-            if (isGrounded) {
+            if (isGrounded) {       
                 nextPosition.y = Mathf.Clamp(nextPosition.y, nextPosition.y - 1, Mathf.Floor(transform.position.y));
             }
 
             //Check if running into any blocks in all four directions
-            if (velocity.z > 0 && CheckFront()) {
-                velocity.z = 0;
-                nextPosition.z = Mathf.Clamp(nextPosition.z, nextPosition.z - 1, Mathf.Ceil(nextPosition.z) - playerWidth);
+            if (velocity.z > 0) {
+                if (CheckFront()) {
+                    velocity.z = 0;
+                    nextPosition.z = Mathf.FloorToInt(nextPosition.z + playerWidth) - playerWidth;
+                }
+            } else if (velocity.z < 0) {
+                if (CheckBack()) {
+                    velocity.z = 0;
+                    nextPosition.z = Mathf.CeilToInt(nextPosition.z - playerWidth) + playerWidth;
+                }
             }
 
-            if (velocity.z < 0 && CheckBack()) {
-                velocity.z = 0;
-                nextPosition.z = Mathf.Clamp(nextPosition.z, Mathf.Floor(nextPosition.z) + playerWidth, nextPosition.z + 1);
+            if (velocity.x > 0) {
+                if (CheckLeft()) {
+                    velocity.x = 0;
+                    nextPosition.x = Mathf.FloorToInt(nextPosition.x + playerWidth) - playerWidth;
+                }
+            } else if (velocity.x < 0) {
+                if (CheckRight()) {
+                    velocity.x = 0;
+                    nextPosition.x = Mathf.CeilToInt(nextPosition.x - playerWidth) + playerWidth;
+                }
             }
 
-            if (velocity.x > 0 && CheckRight()) {
-                velocity.x = 0;
-                nextPosition.x = Mathf.Clamp(nextPosition.x, nextPosition.x - 1, Mathf.Ceil(nextPosition.x) - playerWidth);
-            }
-
-            if (velocity.x < 0 && CheckLeft()) {
-                velocity.x = 0;
-                nextPosition.x = Mathf.Clamp(nextPosition.x, Mathf.Floor(nextPosition.x) + playerWidth, nextPosition.x + 1);
-            }
+            this.currentPosition = nextPosition;
 
         } catch (System.Exception e) {
             Debug.LogError("Error in function Player.CalculateVelocity: " + e.Message);
@@ -239,9 +243,9 @@ public class Player : MonoBehaviour {
     private bool CheckFront() {
         try {
 
-            int x = Mathf.FloorToInt(nextPosition.x);
-            int y = Mathf.FloorToInt(nextPosition.y);
-            int z = Mathf.FloorToInt(nextPosition.z + playerWidth);
+            int x = Mathf.FloorToInt(currentPosition.x);
+            int y = Mathf.FloorToInt(currentPosition.y);
+            int z = Mathf.FloorToInt(currentPosition.z + velocity.z + playerWidth);
 
             return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
@@ -254,9 +258,9 @@ public class Player : MonoBehaviour {
     private bool CheckBack() {
         try {
 
-            int x = Mathf.FloorToInt(nextPosition.x);
-            int y = Mathf.FloorToInt(nextPosition.y);
-            int z = Mathf.FloorToInt(nextPosition.z - playerWidth);
+            int x = Mathf.FloorToInt(currentPosition.x);
+            int y = Mathf.FloorToInt(currentPosition.y);
+            int z = Mathf.FloorToInt(currentPosition.z + velocity.z - playerWidth);
 
             return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
@@ -269,9 +273,9 @@ public class Player : MonoBehaviour {
     private bool CheckLeft() {
         try {
 
-            int x = Mathf.FloorToInt(nextPosition.x - playerWidth);
-            int y = Mathf.FloorToInt(nextPosition.y);
-            int z = Mathf.FloorToInt(nextPosition.z);
+            int x = Mathf.FloorToInt(currentPosition.x + velocity.x + playerWidth);
+            int y = Mathf.FloorToInt(currentPosition.y);
+            int z = Mathf.FloorToInt(currentPosition.z);
 
             return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
@@ -284,9 +288,9 @@ public class Player : MonoBehaviour {
     private bool CheckRight() {
         try {
 
-            int x = Mathf.FloorToInt(nextPosition.x + playerWidth);
-            int y = Mathf.FloorToInt(nextPosition.y);
-            int z = Mathf.FloorToInt(nextPosition.z);
+            int x = Mathf.FloorToInt(currentPosition.x + velocity.x - playerWidth);
+            int y = Mathf.FloorToInt(currentPosition.y);
+            int z = Mathf.FloorToInt(currentPosition.z);
 
             return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 

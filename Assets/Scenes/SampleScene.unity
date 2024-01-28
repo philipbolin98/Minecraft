@@ -301,13 +301,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 794a213323db42a4588f7e627c4bae9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlanetSizeInChunks: 16
+  seed: 0
+  PlanetSizeInChunks: 32
   PlanetSizeInVoxels: 0
-  ViewDistanceInChunks: 4
-  WorldHeight: 128
+  ViewDistanceInChunks: 8
+  WorldHeight: 256
+  gravity: -9.8
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
   chunkPrefab: {fileID: 4945950583187773826, guid: 635b2ba8c59593745874cd824ca613e2, type: 3}
-  spawnPosition: {x: 0, y: 0, z: 0}
+  spawnPosition: {x: 0, y: 128, z: 0}
   blockTypes:
   - blockName: Air
     isSolid: 0
@@ -335,20 +337,36 @@ MonoBehaviour:
     rightFaceTexture: 0
   - blockName: Grass
     isSolid: 1
-    backFaceTexture: 2
-    frontFaceTexture: 2
-    topFaceTexture: 7
-    bottomFaceTexture: 1
-    leftFaceTexture: 2
-    rightFaceTexture: 2
-  - blockName: Dirt
-    isSolid: 1
     backFaceTexture: 1
     frontFaceTexture: 1
-    topFaceTexture: 1
-    bottomFaceTexture: 1
+    topFaceTexture: 0
+    bottomFaceTexture: 2
     leftFaceTexture: 1
     rightFaceTexture: 1
+  - blockName: Dirt
+    isSolid: 1
+    backFaceTexture: 2
+    frontFaceTexture: 2
+    topFaceTexture: 2
+    bottomFaceTexture: 2
+    leftFaceTexture: 2
+    rightFaceTexture: 2
+  - blockName: Water
+    isSolid: 0
+    backFaceTexture: 0
+    frontFaceTexture: 0
+    topFaceTexture: 5
+    bottomFaceTexture: 0
+    leftFaceTexture: 0
+    rightFaceTexture: 0
+  - blockName: Sand
+    isSolid: 1
+    backFaceTexture: 6
+    frontFaceTexture: 6
+    topFaceTexture: 6
+    bottomFaceTexture: 6
+    leftFaceTexture: 6
+    rightFaceTexture: 6
   terrainGenerator: {fileID: 0}
 --- !u!1 &705507993
 GameObject:
@@ -625,8 +643,8 @@ MonoBehaviour:
   OceanFloorLevel: 32
   SeaLevel: 64
   MaxTerrainLevel: 100
-  torusCenterRadius: 2
-  torusTubeRadius: 0.5
+  torusCenterRadius: 1
+  torusTubeRadius: 1
 --- !u!1 &1300140872
 GameObject:
   m_ObjectHideFlags: 0

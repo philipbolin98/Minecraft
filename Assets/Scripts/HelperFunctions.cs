@@ -113,7 +113,7 @@ public static class HelperFunctions {
         try {
 
             BlockID blockID = chunk.data.blocks[blockXInChunk, blockY, blockZInChunk];
-            return blockID != BlockID.Air;
+            return chunk.planet.blockTypes[(int)blockID].isSolid;
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions CheckBlockInChunk: " + ex.Message);
@@ -133,7 +133,7 @@ public static class HelperFunctions {
         try {
 
             BlockID blockID = GetBlockID(planet, blockX, blockY, blockZ);
-            return blockID != BlockID.Air;
+            return planet.blockTypes[(int)blockID].isSolid;
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions CheckVoxelInPlanet: " + ex.Message);
