@@ -39,10 +39,10 @@ public static class HelperFunctions {
         }
     }
 
-    public static Vector3Int GetNormalizedBlockPosInChunk(Vector3Int blockPosInChunk) {
+    public static Vector3Int GetNormalizedBlockPosInChunk(Vector3Int blockPos) {
         try {
 
-            return new Vector3Int(Modulo(blockPosInChunk.x, VoxelData.ChunkSize), blockPosInChunk.y, Modulo(blockPosInChunk.z, VoxelData.ChunkSize));
+            return new Vector3Int(Modulo(blockPos.x, VoxelData.ChunkSize), blockPos.y, Modulo(blockPos.z, VoxelData.ChunkSize));
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions GetNormalizedBlockPosInChunk: " + ex.Message);

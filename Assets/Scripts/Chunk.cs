@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ public class Chunk {
     };
 
     public MeshFilter meshFilter;
+    public MeshCollider meshCollider;
     public GameObject gameObject;
     public Vector2Int pos;
     public Planet planet;
@@ -42,7 +44,7 @@ public class Chunk {
             this.data = new ChunkData(planet);
             planet.chunks[pos.x, pos.y] = this;
 
-        } catch (System.Exception e) {
+        } catch (Exception e) {
             Debug.LogError("Error in function Chunk.Constructor: " + e.Message);
         }
     }
@@ -59,10 +61,24 @@ public class Chunk {
                 }
             }
 
-            //planet.data.AddToModifiedChunkList(this);
+            this.isDataPopulated = true;
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function ChunkData.Popuplate: " + e.Message);
+        } catch (Exception e) {
+            Debug.LogError("Error in Chunk Popuplate: " + e.Message);
+        }
+    }
+
+    public void ClearMeshData() {
+        try {
+
+            vertexIndex = 0;
+            vertices.Clear();
+            triangles.Clear();
+            waterTriangles.Clear();
+            uvs.Clear();
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk ClearMeshData: " + ex.Message);
         }
     }
 
@@ -72,6 +88,8 @@ public class Chunk {
     public void CreateMeshData() {
         try {
 
+            ClearMeshData();
+
             for (int y = 0; y < this.planet.WorldHeight; y++) {
                 for (int x = 0; x < VoxelData.ChunkSize; x++) {
                     for (int z = 0; z < VoxelData.ChunkSize; z++) {
@@ -80,7 +98,9 @@ public class Chunk {
                 }
             }
 
-        } catch (System.Exception e) {
+            this.isMeshGenerated = true;
+
+        } catch (Exception e) {
             Debug.LogError("Error in function Chunk.CreateMeshData: " + e.Message);
         }
     }
@@ -170,12 +190,12 @@ public class Chunk {
                 }
             }
             
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Chunk.AddVoxelDataToChunk: " + e.Message);
+        } catch (Exception e) {
+            Debug.LogError("Error in Chunk AddVoxelDataToChunk: " + e.Message);
         }
     }
 
-    void CreateMesh() {
+    public void CreateMesh() {
         try {
 
             Mesh mesh = new Mesh();
@@ -184,12 +204,13 @@ public class Chunk {
             mesh.SetTriangles(triangles.ToArray(), 0);
             mesh.SetTriangles(waterTriangles.ToArray(), 1);
             mesh.uv = uvs.ToArray();
-
             mesh.RecalculateNormals();
-            meshFilter.mesh = mesh;
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Chunk.CreateMesh: " + e.Message);
+            meshFilter.mesh = mesh;
+            meshCollider.sharedMesh = mesh;
+
+        } catch (Exception e) {
+            Debug.LogError("Error in Chunk CreateMesh: " + e.Message);
         }
     }
 
@@ -209,8 +230,8 @@ public class Chunk {
             uvs.Add(new Vector2(x + VoxelData.NormalizedBlockTextureSize, y));
             uvs.Add(new Vector2(x + VoxelData.NormalizedBlockTextureSize, y + VoxelData.NormalizedBlockTextureSize));
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Chunk.AddTexture: " + e.Message);
+        } catch (Exception e) {
+            Debug.LogError("Error in Chunk AddTexture: " + e.Message);
         }
     }
 
@@ -224,9 +245,10 @@ public class Chunk {
             this.planet.unusedChunkObjects.Enqueue(this.gameObject);
             this.gameObject = null;
             this.meshFilter.mesh = null;
+            this.meshCollider.sharedMesh = null;
             this.isRendered = false;
         
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Chunk Disable: " + ex.Message);
         }
     }
@@ -239,13 +261,16 @@ public class Chunk {
     public void Enable(Vector2Int pos, Vector2Int normalizedPos) {
         try {
 
-            if (this.planet.unusedChunkObjects.Count > 0) {
-                this.gameObject = planet.unusedChunkObjects.Dequeue();
-            } else {
-                this.gameObject = Object.Instantiate(this.planet.chunkPrefab);
+            if (this.gameObject == null) {
+                if (this.planet.unusedChunkObjects.Count > 0) {
+                    this.gameObject = planet.unusedChunkObjects.Dequeue();
+                } else {
+                    this.gameObject = UnityEngine.Object.Instantiate(this.planet.chunkPrefab);
+                }
             }
 
             this.meshFilter = gameObject.GetComponent<MeshFilter>();
+            this.meshCollider = gameObject.GetComponent<MeshCollider>();
 
             this.gameObject.transform.SetParent(planet.gameObject.transform);
             this.gameObject.transform.position = new Vector3(pos.x * VoxelData.ChunkSize, 0, pos.y * VoxelData.ChunkSize);
@@ -255,7 +280,7 @@ public class Chunk {
             this.CreateMesh();
             this.isRendered = true;
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Chunk Enable: " + ex.Message);
         }
     }
@@ -272,7 +297,7 @@ public class ChunkData {
 
             this.blocks = new BlockID[VoxelData.ChunkSize, planet.WorldHeight, VoxelData.ChunkSize];
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in ChunkData Constructor: " + ex.Message);
         }
     }

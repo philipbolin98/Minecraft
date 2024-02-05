@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
 using System.Linq;
+using System;
 
 public class Planet : MonoBehaviour {
 
@@ -27,8 +28,8 @@ public class Planet : MonoBehaviour {
     private List<Vector2Int> chunksToPopulate = new List<Vector2Int>();
     private object chunksToPopulateLock = new object();
 
-    private List<Vector2Int> chunksToMesh = new List<Vector2Int>();
-    private object chunksToMeshLock = new object();
+    public List<Vector2Int> chunksToMesh = new List<Vector2Int>();
+    public object chunksToMeshLock = new object();
 
     [HideInInspector]
     public TerrainGenerator terrainGenerator;
@@ -42,7 +43,7 @@ public class Planet : MonoBehaviour {
 
             this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
 
-            this.seed = Random.Range(0, int.MaxValue);
+            this.seed = UnityEngine.Random.Range(0, int.MaxValue);
             this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
             this.terrainGenerator.Initialize(this.seed);
 
@@ -54,7 +55,7 @@ public class Planet : MonoBehaviour {
             Instantiate(this.player);
             this.player.transform.position = spawnPosition;
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Planet Start: " + ex.Message);
         }
     }
@@ -62,7 +63,7 @@ public class Planet : MonoBehaviour {
     private void OnDisable() {
         try {
             gameRunning = false;
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Planet OnDisable: " + ex.Message);
         }
     }
@@ -132,7 +133,7 @@ public class Planet : MonoBehaviour {
                 }
             }
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Planet CheckRenderDistance: " + ex.Message);
         }
     }
@@ -143,42 +144,39 @@ public class Planet : MonoBehaviour {
 
                 if (chunksToPopulate.Count > 0) {
 
-                    List<Vector2Int> chunks = null;
+                    Vector2Int chunkPos = chunksToPopulate[0];
 
                     lock (chunksToPopulateLock) {
-                        chunks = chunksToPopulate.ToList();
-                        chunksToPopulate.Clear();
+                        chunksToPopulate.RemoveAt(0);
                     }
 
-                    foreach (Vector2Int normalizedChunkPos in chunks) {
-                        Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
-                        chunk.Popuplate(this);
-                        chunk.isDataPopulated = true;
-                    }
+                    Chunk chunk = this.chunks[chunkPos.x, chunkPos.y];
+                    chunk.Popuplate(this);
                 }
 
                 if (chunksToMesh.Count > 0) {
 
-                    List<Vector2Int> chunks = new List<Vector2Int>();
+                    Vector2Int chunkPos;
+                    bool proceed = false;
 
                     lock (chunksToMeshLock) {
-                        for (int i = chunksToMesh.Count - 1; i >= 0; i--) {
-                            Vector2Int normalizedChunkPos = chunksToMesh[i];
-                            if (HelperFunctions.CanChunkMeshBeCreated(this, normalizedChunkPos)) {
-                                chunks.Add(normalizedChunkPos);
-                                chunksToMesh.Remove(normalizedChunkPos);
-                            }
+                        chunkPos = chunksToMesh[0];
+
+                        if (HelperFunctions.CanChunkMeshBeCreated(this, chunkPos)) {
+                            proceed = true;
+                            chunksToMesh.Remove(chunkPos);
                         }
                     }
 
-                    foreach (Vector2Int normalizedChunkPos in chunks) {
-                        Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
+                    if (proceed) {
+
+                        //Debug.Log(DateTime.Now + " Creating mesh for chunk: " + chunkPos);
+                        Chunk chunk = this.chunks[chunkPos.x, chunkPos.y];
                         chunk.CreateMeshData();
-                        chunk.isMeshGenerated = true;
                     }
                 }
 
-            } catch (System.Exception ex) {
+            } catch (Exception ex) {
                 Debug.LogError("Error in Planet GenerateChunks: " + ex.Message);
             }
         }
@@ -196,11 +194,12 @@ public class Planet : MonoBehaviour {
                 Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                 if (!chunk.isRendered && chunk.isDataPopulated && chunk.isMeshGenerated) {
+                    //Debug.Log(DateTime.Now + " Rendering chunk: " + chunkPos);
                     chunk.Enable(chunkPos, normalizedChunkPos);
                 }
             }
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Planet GenerateChunks: " + ex.Message);
         }
     }  
@@ -243,7 +242,7 @@ public class Block {
                     throw new System.ArgumentException();
             }
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Block GetTextureID: " + ex.Message);
             return 0;
         }

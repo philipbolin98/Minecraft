@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using TMPro;
 using Unity.Profiling;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,6 +11,7 @@ public class Player : MonoBehaviour {
     public float walkSpeed;
     public float sprintSpeed;
     public float jumpForce;
+    public float reach;
 
     private bool isGrounded;
     private bool isSprinting;
@@ -34,6 +38,12 @@ public class Player : MonoBehaviour {
     private TextMeshProUGUI playerBlockCoordsUI;
     private TextMeshProUGUI playerChunkCoordsUI;
 
+    private GameObject breakHighlightBlock;
+    private GameObject placeHighlightBlock;
+
+    private Vector3Int breakPos;
+    private Vector3Int placePos;
+
     private void Start() {
         try {
 
@@ -41,11 +51,15 @@ public class Player : MonoBehaviour {
             planet = GameObject.Find("Planet").GetComponent<Planet>();
             playerBlockCoordsUI = GameObject.Find("PlayerBlockCoords").GetComponent<TextMeshProUGUI>();
             playerChunkCoordsUI = GameObject.Find("PlayerChunkCoords").GetComponent<TextMeshProUGUI>();
+            breakHighlightBlock = GameObject.Find("HighlightBlock");
+            placeHighlightBlock = GameObject.Find("PlaceBlock");
 
             currentPosition = transform.position;
             currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
 
-        } catch (System.Exception ex) {
+            Cursor.lockState = CursorLockMode.Locked;
+
+        } catch (Exception ex) {
             Debug.LogError("Error in Player Start: " + ex.Message);
         }
     }
@@ -59,7 +73,7 @@ public class Player : MonoBehaviour {
             }
 
             transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotationY, transform.eulerAngles.z);
-            cam.transform.eulerAngles = new Vector3(rotationX, cam.transform.eulerAngles.y, cam.transform.eulerAngles.z);
+            cam.eulerAngles = new Vector3(rotationX, cam.eulerAngles.y, cam.eulerAngles.z);
 
             transform.position = currentPosition;
 
@@ -75,7 +89,7 @@ public class Player : MonoBehaviour {
             playerBlockCoordsUI.text = currentPosition.ToString();
             playerChunkCoordsUI.text = currentChunk.ToString();
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Player FixedUpdate: " + ex.Message);
         }
     }
@@ -84,9 +98,83 @@ public class Player : MonoBehaviour {
         try {
 
             GetPlayerInputs();
+            PositionHighlightBlocks();
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Player Update: " + ex.Message);
+        }
+    }
+
+    private void PositionHighlightBlocks() {
+        try {
+
+            Ray ray = new Ray(cam.position, cam.forward);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit, reach)) {
+
+                int x, y, z;
+
+                if (hit.normal == Vector3.up || hit.normal == Vector3.down) {
+                    x = Mathf.FloorToInt(hit.point.x);
+                    y = Mathf.RoundToInt(hit.point.y);
+                    z = Mathf.FloorToInt(hit.point.z);
+                } else if (hit.normal == Vector3.left || hit.normal == Vector3.right) {
+                    x = Mathf.RoundToInt(hit.point.x);
+                    y = Mathf.FloorToInt(hit.point.y);
+                    z = Mathf.FloorToInt(hit.point.z);
+                } else { //Forward or back
+                    x = Mathf.FloorToInt(hit.point.x);
+                    y = Mathf.FloorToInt(hit.point.y);
+                    z = Mathf.RoundToInt(hit.point.z);
+                }
+
+                breakPos = new Vector3Int(x, y, z);
+
+                Vector3Int normal = new Vector3Int(Mathf.FloorToInt(hit.normal.x), Mathf.FloorToInt(hit.normal.y), Mathf.FloorToInt(hit.normal.z));
+
+                if (normal == Vector3Int.up || normal == Vector3Int.right || normal == Vector3Int.forward) {
+                    breakPos -= normal;
+                }
+
+                if (HelperFunctions.CheckBlockInPlanet(this.planet, breakPos.x, breakPos.y, breakPos.z)) {
+
+                    if (breakHighlightBlock.transform.position != breakPos || !breakHighlightBlock.activeSelf) {
+                        breakHighlightBlock.transform.position = breakPos;
+                        breakHighlightBlock.SetActive(true);
+                    }
+
+                    placePos = breakPos + normal;
+
+                    if (placeHighlightBlock.transform.position != placePos || !placeHighlightBlock.activeSelf) {
+                        placeHighlightBlock.transform.position = placePos;
+                        placeHighlightBlock.SetActive(true);
+                    }
+
+                } else {
+
+                    if (breakHighlightBlock.activeSelf) {
+                        breakHighlightBlock.SetActive(false);
+                    }
+
+                    if (placeHighlightBlock.activeSelf) {
+                        placeHighlightBlock.SetActive(false);
+                    }
+                }
+
+            } else {
+
+                if (breakHighlightBlock.activeSelf) {
+                    breakHighlightBlock.SetActive(false);
+                }
+
+                if (placeHighlightBlock.activeSelf) {
+                    placeHighlightBlock.SetActive(false);
+                }
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player PositionHighlightBlocks: " + ex.Message);
         }
     }
 
@@ -97,7 +185,7 @@ public class Player : MonoBehaviour {
             isGrounded = false;
             jumpRequest = false;
 
-        } catch (System.Exception e) {
+        } catch (Exception e) {
             Debug.LogError("Error in function Player.Jump: " + e.Message);
         }
     }
@@ -112,7 +200,6 @@ public class Player : MonoBehaviour {
 
             float speedModifier = isSprinting ? sprintSpeed : walkSpeed;
             velocity = speedModifier * Time.deltaTime * ((transform.forward * vertical) + (transform.right * horizontal));
-
 
             //Apply vertical momentum
             velocity += Time.fixedDeltaTime * verticalMomentum * Vector3.up;
@@ -131,24 +218,24 @@ public class Player : MonoBehaviour {
 
             //Check if running into any blocks in all four directions
             if (velocity.z > 0) {
-                if (CheckFront()) {
+                if (CheckSide(VoxelData.BlockFace.Front)) {
                     velocity.z = 0;
                     nextPosition.z = Mathf.FloorToInt(nextPosition.z + playerWidth) - playerWidth;
                 }
             } else if (velocity.z < 0) {
-                if (CheckBack()) {
+                if (CheckSide(VoxelData.BlockFace.Back)) {
                     velocity.z = 0;
                     nextPosition.z = Mathf.CeilToInt(nextPosition.z - playerWidth) + playerWidth;
                 }
             }
 
             if (velocity.x > 0) {
-                if (CheckLeft()) {
+                if (CheckSide(VoxelData.BlockFace.Left)) {
                     velocity.x = 0;
                     nextPosition.x = Mathf.FloorToInt(nextPosition.x + playerWidth) - playerWidth;
                 }
             } else if (velocity.x < 0) {
-                if (CheckRight()) {
+                if (CheckSide(VoxelData.BlockFace.Right)) {
                     velocity.x = 0;
                     nextPosition.x = Mathf.CeilToInt(nextPosition.x - playerWidth) + playerWidth;
                 }
@@ -156,7 +243,7 @@ public class Player : MonoBehaviour {
 
             this.currentPosition = nextPosition;
 
-        } catch (System.Exception e) {
+        } catch (Exception e) {
             Debug.LogError("Error in function Player.CalculateVelocity: " + e.Message);
         }
     }
@@ -187,8 +274,72 @@ public class Player : MonoBehaviour {
                 SceneManager.LoadScene("SampleScene");
             }
 
-        } catch (System.Exception e) {
-            Debug.LogError("Error in function Player.GetPlayerInputs: " + e.Message);
+            if (Input.GetMouseButtonDown(0) && breakHighlightBlock.activeSelf) {
+                EditBlock(breakPos, BlockID.Air);
+            }
+
+            if (Input.GetMouseButtonDown(1) && placeHighlightBlock.activeSelf) {
+                EditBlock(placePos, BlockID.Stone);
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in function Player.GetPlayerInputs: " + ex.Message);
+        }
+    }
+
+    private void EditBlock(Vector3Int blockPosInPlanet, BlockID blockID) {
+        try {
+
+            Chunk chunk = HelperFunctions.GetChunkFromBlockPos(this.planet, blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z);
+
+            if (chunk == null) {
+                return;
+            }
+
+            Vector3Int blockPosInChunk = HelperFunctions.GetNormalizedBlockPosInChunk(blockPosInPlanet);
+
+            chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
+
+            RegenerateMesh(chunk.pos);
+
+            if (blockPosInChunk.x == 0) {
+                RegenerateMesh(chunk.pos + Vector2Int.left);
+            } else if (blockPosInChunk.x == VoxelData.ChunkSize - 1) {
+                RegenerateMesh(chunk.pos + Vector2Int.right);
+            }
+
+            if (blockPosInChunk.z == 0) {
+                RegenerateMesh(chunk.pos + Vector2Int.down);
+            } else if (blockPosInChunk.z ==  VoxelData.ChunkSize - 1) {
+                RegenerateMesh(chunk.pos + Vector2Int.up);
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player EditBlock: " + ex.Message);
+        }
+    }
+
+    private void RegenerateMesh(Vector2Int chunkPos) {
+        try {
+
+            chunkPos = HelperFunctions.GetNormalizedChunkPos(this.planet, chunkPos);
+            Chunk chunk = this.planet.chunks[chunkPos.x, chunkPos.y];
+
+            if (chunk == null) {
+                return;
+            }
+
+            chunk.isRendered = false;
+            chunk.isMeshGenerated = false;
+
+            lock (this.planet.chunksToMeshLock) {
+                this.planet.chunksToMesh.Insert(0, chunkPos);
+            }
+
+            //Debug.Log(DateTime.Now + " Editing chunk: " + chunkPos);
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player PrepareChunkForEditing: " + ex.Message);
         }
     }
 
@@ -212,7 +363,7 @@ public class Player : MonoBehaviour {
                 return false;
             }
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Player CheckBottom: " + ex.Message);
             return true;
         }
@@ -234,68 +385,43 @@ public class Player : MonoBehaviour {
                 return false;
             }
 
-        } catch (System.Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError("Error in Player CheckTop: " + ex.Message);
             return true;
         }
     }
 
-    private bool CheckFront() {
+    private bool CheckSide(VoxelData.BlockFace side) {
         try {
 
-            int x = Mathf.FloorToInt(currentPosition.x);
             int y = Mathf.FloorToInt(currentPosition.y);
-            int z = Mathf.FloorToInt(currentPosition.z + velocity.z + playerWidth);
+            int x, z;
+
+            switch (side) {
+                case VoxelData.BlockFace.Left:
+                    x = Mathf.FloorToInt(currentPosition.x + velocity.x + playerWidth);
+                    z = Mathf.FloorToInt(currentPosition.z);
+                    break;
+                case VoxelData.BlockFace.Right:
+                    x = Mathf.FloorToInt(currentPosition.x + velocity.x - playerWidth);
+                    z = Mathf.FloorToInt(currentPosition.z);
+                    break;
+                case VoxelData.BlockFace.Front:
+                    x = Mathf.FloorToInt(currentPosition.x);
+                    z = Mathf.FloorToInt(currentPosition.z + velocity.z + playerWidth);
+                    break;
+                case VoxelData.BlockFace.Back:
+                    x = Mathf.FloorToInt(currentPosition.x);
+                    z = Mathf.FloorToInt(currentPosition.z + velocity.z - playerWidth);
+                    break;
+                default:
+                    return true;
+            }
 
             return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
 
-        } catch (System.Exception ex) {
-            Debug.LogError("Error in Player CheckTop: " + ex.Message);
-            return true;
-        }
-    }
-
-    private bool CheckBack() {
-        try {
-
-            int x = Mathf.FloorToInt(currentPosition.x);
-            int y = Mathf.FloorToInt(currentPosition.y);
-            int z = Mathf.FloorToInt(currentPosition.z + velocity.z - playerWidth);
-
-            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
-
-        } catch (System.Exception ex) {
-            Debug.LogError("Error in Player CheckBack: " + ex.Message);
-            return true;
-        }
-    }
-
-    private bool CheckLeft() {
-        try {
-
-            int x = Mathf.FloorToInt(currentPosition.x + velocity.x + playerWidth);
-            int y = Mathf.FloorToInt(currentPosition.y);
-            int z = Mathf.FloorToInt(currentPosition.z);
-
-            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
-
-        } catch (System.Exception ex) {
-            Debug.LogError("Error in Player CheckLeft: " + ex.Message);
-            return true;
-        }
-    }
-
-    private bool CheckRight() {
-        try {
-
-            int x = Mathf.FloorToInt(currentPosition.x + velocity.x - playerWidth);
-            int y = Mathf.FloorToInt(currentPosition.y);
-            int z = Mathf.FloorToInt(currentPosition.z);
-
-            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
-
-        } catch (System.Exception ex) {
-            Debug.LogError("Error in Player CheckRight: " + ex.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player CheckSide: " + ex.Message);
             return true;
         }
     }
