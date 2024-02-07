@@ -388,7 +388,7 @@ MonoBehaviour:
   PlanetSizeInChunks: 32
   PlanetSizeInVoxels: 0
   ViewDistanceInChunks: 4
-  WorldHeight: 256
+  WorldHeight: 128
   gravity: -9.8
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
   chunkPrefab: {fileID: 4945950583187773826, guid: 635b2ba8c59593745874cd824ca613e2, type: 3}
@@ -396,60 +396,60 @@ MonoBehaviour:
   blockTypes:
   - blockName: Air
     isSolid: 0
-    backFaceTexture: 0
-    frontFaceTexture: 0
-    topFaceTexture: 0
-    bottomFaceTexture: 0
-    leftFaceTexture: 0
     rightFaceTexture: 0
+    topFaceTexture: 0
+    frontFaceTexture: 0
+    leftFaceTexture: 0
+    bottomFaceTexture: 0
+    backFaceTexture: 0
   - blockName: Bedrock
     isSolid: 1
-    backFaceTexture: 4
-    frontFaceTexture: 4
-    topFaceTexture: 4
-    bottomFaceTexture: 4
-    leftFaceTexture: 4
     rightFaceTexture: 4
+    topFaceTexture: 4
+    frontFaceTexture: 4
+    leftFaceTexture: 4
+    bottomFaceTexture: 4
+    backFaceTexture: 4
   - blockName: Stone
     isSolid: 1
-    backFaceTexture: 3
-    frontFaceTexture: 3
-    topFaceTexture: 3
-    bottomFaceTexture: 3
-    leftFaceTexture: 3
     rightFaceTexture: 3
+    topFaceTexture: 3
+    frontFaceTexture: 3
+    leftFaceTexture: 3
+    bottomFaceTexture: 3
+    backFaceTexture: 3
   - blockName: Grass
     isSolid: 1
-    backFaceTexture: 1
-    frontFaceTexture: 1
-    topFaceTexture: 0
-    bottomFaceTexture: 2
-    leftFaceTexture: 1
     rightFaceTexture: 1
+    topFaceTexture: 0
+    frontFaceTexture: 1
+    leftFaceTexture: 1
+    bottomFaceTexture: 2
+    backFaceTexture: 1
   - blockName: Dirt
     isSolid: 1
-    backFaceTexture: 2
-    frontFaceTexture: 2
-    topFaceTexture: 2
-    bottomFaceTexture: 2
-    leftFaceTexture: 2
     rightFaceTexture: 2
+    topFaceTexture: 2
+    frontFaceTexture: 2
+    leftFaceTexture: 2
+    bottomFaceTexture: 2
+    backFaceTexture: 2
   - blockName: Water
     isSolid: 0
-    backFaceTexture: 0
-    frontFaceTexture: 0
+    rightFaceTexture: 5
     topFaceTexture: 5
-    bottomFaceTexture: 0
-    leftFaceTexture: 0
-    rightFaceTexture: 0
+    frontFaceTexture: 5
+    leftFaceTexture: 5
+    bottomFaceTexture: 5
+    backFaceTexture: 5
   - blockName: Sand
     isSolid: 1
-    backFaceTexture: 6
-    frontFaceTexture: 6
-    topFaceTexture: 6
-    bottomFaceTexture: 6
-    leftFaceTexture: 6
     rightFaceTexture: 6
+    topFaceTexture: 6
+    frontFaceTexture: 6
+    leftFaceTexture: 6
+    bottomFaceTexture: 6
+    backFaceTexture: 6
   chunksToMesh: []
   terrainGenerator: {fileID: 0}
 --- !u!1 &705507993

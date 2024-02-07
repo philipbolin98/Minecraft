@@ -53,7 +53,7 @@ public class Planet : MonoBehaviour {
             CheckRenderDistance(spawnPosition); //Need to do one initial check when the planet loads
             
             Instantiate(this.player);
-            this.player.transform.position = spawnPosition;
+            this.player.transform.position = this.spawnPosition;
 
         } catch (Exception ex) {
             Debug.LogError("Error in Planet Start: " + ex.Message);
@@ -212,40 +212,45 @@ public class Block {
     public bool isSolid;
 
     [Header("Texture Values")]
-    public int backFaceTexture;
-    public int frontFaceTexture;
-    public int topFaceTexture;
-    public int bottomFaceTexture;
-    public int leftFaceTexture;
     public int rightFaceTexture;
-
-    // Back, Front, Top, Bottom, Left, Right
+    public int topFaceTexture;
+    public int frontFaceTexture;
+    public int leftFaceTexture;
+    public int bottomFaceTexture;
+    public int backFaceTexture;
 
     public int GetTextureID(int faceIndex) {
+
+        int index = 0;
+        
         try {
 
             switch (faceIndex) {
-
                 case 0:
-                    return backFaceTexture;
+                    index = this.rightFaceTexture;
+                    break;
                 case 1:
-                    return frontFaceTexture;
+                    index = this.topFaceTexture;
+                    break;
                 case 2:
-                    return topFaceTexture;
+                    index = this.frontFaceTexture;
+                    break;
                 case 3:
-                    return bottomFaceTexture;
+                    index = this.leftFaceTexture;
+                    break;
                 case 4:
-                    return leftFaceTexture;
+                    index = this.bottomFaceTexture;
+                    break;
                 case 5:
-                    return rightFaceTexture;
-                default:
-                    throw new System.ArgumentException();
+                    index = this.backFaceTexture;
+                    break;
             }
 
         } catch (Exception ex) {
             Debug.LogError("Error in Block GetTextureID: " + ex.Message);
-            return 0;
         }
+
+        return index;
     }
 }
 

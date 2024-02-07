@@ -31,7 +31,7 @@ public static class HelperFunctions {
     public static Vector3Int GetNormalizedBlockPosInPlanet(Planet planet, int blockX, int blockY, int blockZ) {
         try {
 
-            return new Vector3Int(Modulo(blockX, planet.PlanetSizeInVoxels), blockY, Modulo(blockZ, planet.PlanetSizeInVoxels));
+            return new Vector3Int((int)Modulo(blockX, planet.PlanetSizeInVoxels), blockY, (int)Modulo(blockZ, planet.PlanetSizeInVoxels));
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions GetNormalizedBlockPosInPlanet: " + ex.Message);
@@ -42,7 +42,7 @@ public static class HelperFunctions {
     public static Vector3Int GetNormalizedBlockPosInChunk(Vector3Int blockPos) {
         try {
 
-            return new Vector3Int(Modulo(blockPos.x, VoxelData.ChunkSize), blockPos.y, Modulo(blockPos.z, VoxelData.ChunkSize));
+            return new Vector3Int((int)Modulo(blockPos.x, VoxelData.ChunkSize), blockPos.y, (int)Modulo(blockPos.z, VoxelData.ChunkSize));
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions GetNormalizedBlockPosInChunk: " + ex.Message);
@@ -59,7 +59,7 @@ public static class HelperFunctions {
     public static Vector2Int GetNormalizedChunkPos(Planet planet, int chunkX, int chunkZ) {
         try {
 
-            return new Vector2Int(Modulo(chunkX, planet.PlanetSizeInChunks), Modulo(chunkZ, planet.PlanetSizeInChunks));
+            return new Vector2Int((int)Modulo(chunkX, planet.PlanetSizeInChunks), (int)Modulo(chunkZ, planet.PlanetSizeInChunks));
 
         } catch (System.Exception ex) {
             Debug.LogError("Error in HelperFunctions GetNormalizedChunkPos: " + ex.Message);
@@ -89,10 +89,10 @@ public static class HelperFunctions {
     /// <param name="x"></param>
     /// <param name="m"></param>
     /// <returns></returns>
-    public static int Modulo(int x, int m) {
+    public static float Modulo(float x, int m) {
         try {
 
-            int r = x % m;
+            float r = x % m;
             return r < 0 ? r + m : r;
 
         } catch (System.Exception ex) {
@@ -243,11 +243,7 @@ public static class HelperFunctions {
                 Vector2Int normalizedChunkPos = GetNormalizedChunkPos(planet, chunkPos + offset);
                 Chunk chunk = planet.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
-                if (chunk == null) {
-                    return false;
-                }
-
-                if (!chunk.isDataPopulated) {
+                if (chunk == null || !chunk.isDataPopulated) {
                     return false;
                 }
             }

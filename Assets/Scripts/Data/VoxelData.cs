@@ -21,36 +21,36 @@ public class VoxelData {
     };
 
     public static readonly Vector3Int[] FaceChecks = new Vector3Int[6] {
-        new Vector3Int(0, 0, -1), //Back
-        new Vector3Int(0, 0, 1), //Front
-        new Vector3Int(0, 1, 0), //Top
-        new Vector3Int(0, -1, 0), //Bottom
-        new Vector3Int(-1, 0, 0), //Left
-        new Vector3Int(1, 0, 0) //Right
+        Vector3Int.right, //Right
+        Vector3Int.up, //Top
+        Vector3Int.forward, //Front
+        Vector3Int.left, //Left
+        Vector3Int.down, //Bottom
+        Vector3Int.back //Back
     };
 
     public static readonly int[,] Triangles = new int[6, 4]{
-        {0,3,1,2}, //Back
-        {5,6,4,7}, //Front
+        {1,2,5,6}, //Right
         {3,7,2,6}, //Top
-        {1,5,0,4}, //Bottom
+        {5,6,4,7}, //Front
         {4,7,0,3}, //Left
-        {1,2,5,6} //Right
+        {1,5,0,4}, //Bottom
+        {0,3,1,2} //Back
     };
 
     public static readonly Vector2Int[] Uvs = new Vector2Int[4]{
-        new Vector2Int(0, 0),
-        new Vector2Int(0, 1),
-        new Vector2Int(1, 0),
-        new Vector2Int(1, 1)
+        Vector2Int.zero,
+        Vector2Int.up,
+        Vector2Int.right,
+        Vector2Int.one
     };
 
     public enum BlockFace {
-        Back = 0,
-        Front = 1,
-        Top = 2,
-        Bottom = 3,
-        Left = 4,
-        Right = 5
+        Right = 0,
+        Top = 1,
+        Front = 2,
+        Left = 3,
+        Bottom = 4,
+        Back = 5
     }
 }
