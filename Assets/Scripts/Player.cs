@@ -491,14 +491,8 @@ public class Player : MonoBehaviour {
                 return;
             }
 
-            chunk.isRendered = false;
-            chunk.isMeshGenerated = false;
-
-            lock (this.planet.chunksToMeshLock) {
-                this.planet.chunksToMesh.Insert(0, chunkPos);
-            }
-
-            //Debug.Log(DateTime.Now + " Editing chunk: " + chunkPos);
+            chunk.CreateMeshData();
+            chunk.CreateMesh();
 
         } catch (Exception ex) {
             Debug.LogError("Error in Player PrepareChunkForEditing: " + ex.Message);

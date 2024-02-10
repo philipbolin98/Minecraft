@@ -116,22 +116,42 @@ public class Chunk {
             BlockID blockID = this.data.blocks[blockXInChunk, blockYInChunk, blockZInChunk]; //Get the block id
 
             Vector3Int blockPosInChunk = new Vector3Int(blockXInChunk, blockYInChunk, blockZInChunk);
-            Vector3Int blockPosInPlanet = new Vector3Int(this.pos.x * VoxelData.ChunkSize + blockXInChunk, blockYInChunk, this.pos.y * VoxelData.ChunkSize + blockZInChunk);
 
             for (int face = 0; face < 3; face++) {
 
                 Vector3Int faceCheck = VoxelData.FaceChecks[face];
-                Vector3Int neighborPosInPlanet = blockPosInPlanet + faceCheck;
-
-                Chunk neighborChunk = HelperFunctions.GetChunkFromBlockPos(this.planet, neighborPosInPlanet.x, neighborPosInPlanet.y, neighborPosInPlanet.z);
-
-                if (neighborChunk == null) {
-                    continue;
-                }
-
                 Vector3Int neighborPosInChunk = blockPosInChunk + faceCheck;
-                Vector3Int normalizedNeighborPosInChunk = HelperFunctions.GetNormalizedBlockPosInChunk(neighborPosInChunk);
-                BlockID neighborBlockID = neighborChunk.data.blocks[normalizedNeighborPosInChunk.x, normalizedNeighborPosInChunk.y, normalizedNeighborPosInChunk.z];
+
+                BlockID neighborBlockID;
+
+                if (neighborPosInChunk.x == VoxelData.ChunkSize) {
+
+                    Chunk neighborChunk = this.pos.x == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[0, this.pos.y] : this.planet.chunks[this.pos.x + 1, this.pos.y];
+
+                    if (neighborChunk == null) {
+                        continue;
+                    }
+
+                    neighborBlockID = neighborChunk.data.blocks[0, neighborPosInChunk.y, neighborPosInChunk.z];
+
+                } else if (neighborPosInChunk.z == VoxelData.ChunkSize) {
+
+                    Chunk neighborChunk = this.pos.y == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[this.pos.x, 0] : this.planet.chunks[this.pos.x, this.pos.y + 1];
+
+                    if (neighborChunk == null) {
+                        continue;
+                    }
+
+                    neighborBlockID = neighborChunk.data.blocks[neighborPosInChunk.x, neighborPosInChunk.y, 0];
+
+                } else if (neighborPosInChunk.y == this.planet.WorldHeight) {
+
+                    neighborBlockID = BlockID.Air;
+
+                } else {
+
+                    neighborBlockID = this.data.blocks[neighborPosInChunk.x, neighborPosInChunk.y, neighborPosInChunk.z];
+                }
 
                 if (blockID == BlockID.Air) {
 
@@ -164,13 +184,12 @@ public class Chunk {
         try {
 
             this.meshFilter.mesh = null;
-
             this.mesh.Clear();
             this.mesh.subMeshCount = 2;
             this.mesh.vertices = vertices.ToArray();
+            this.mesh.uv = uvs.ToArray();
             this.mesh.SetTriangles(triangles.ToArray(), 0);
             this.mesh.SetTriangles(waterTriangles.ToArray(), 1);
-            this.mesh.uv = uvs.ToArray();
             this.mesh.RecalculateNormals();
             this.meshFilter.mesh = this.mesh;
 
