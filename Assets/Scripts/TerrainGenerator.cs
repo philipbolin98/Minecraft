@@ -1,6 +1,4 @@
 using Noise;
-using System;
-using UnityEditor.UI;
 using UnityEngine;
 
 public class TerrainGenerator : MonoBehaviour {
@@ -12,7 +10,7 @@ public class TerrainGenerator : MonoBehaviour {
 
     public int OceanFloorLevel;
     public int SeaLevel;
-    public int MaxTerrainLevel;
+
     /// <summary>
     /// The radius of the torus from the center of the torus to the center of the torus tube
     /// Increasing this value will scrunch the world along the x axis 
@@ -28,7 +26,7 @@ public class TerrainGenerator : MonoBehaviour {
         try {
 
             this.seed = seed;
-            UnityEngine.Random.InitState(seed);
+            Random.InitState(seed);
 
             OpenSimplex = new OpenSimplex2S(seed);
 
@@ -45,29 +43,32 @@ public class TerrainGenerator : MonoBehaviour {
             int blockXInPlanet = (VoxelData.ChunkSize * chunk.pos.x) + blockXInChunk;
             int blockZInPlanet = (VoxelData.ChunkSize * chunk.pos.y) + blockZInChunk;
 
-            float noiseValue = (float)TorusNoise(planet, blockXInPlanet, blockZInPlanet);
+            float biomeNoiseValue = (float)TorusNoise(planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius / 4, this.torusTubeRadius / 4);
+            int biomeIndex = Mathf.FloorToInt(biomeNoiseValue * planet.biomes.Length);
+            Biome biome = planet.biomes[biomeIndex];
+
+            float noiseValue = (float)TorusNoise(planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius, this.torusTubeRadius);
+            int terrainHeight = OceanFloorLevel + Mathf.FloorToInt((biome.maxTerrainHeight - OceanFloorLevel) * noiseValue);
 
             for (int y = 0; y < planet.WorldHeight; y++) {
 
-                int terrainHeight = OceanFloorLevel + Mathf.FloorToInt((MaxTerrainLevel - OceanFloorLevel) * noiseValue);
-
                 BlockID blockID;
 
-                if (!HelperFunctions.IsBlockInPlanet(planet, y)) { //Air for everything above the surface
+                if (!HelperFunctions.IsBlockInPlanet(planet, y)) {
                     blockID = BlockID.Air;
                 } else if (y > terrainHeight) {
-                    if (y < SeaLevel) {
+                    if (y < SeaLevel) { //Water when above the surface but below sea level
                         blockID = BlockID.Water;
-                    } else {
+                    } else { //Air when above the surface and above sea level
                         blockID = BlockID.Air;
                     }
                 } else if (y < 1) { //Bedrock for y = 0
                     blockID = BlockID.Bedrock;
-                } else if (y == terrainHeight) { //Grass for the top layer
+                } else if (y == terrainHeight) {
                     if (y < SeaLevel + 2) {
                         blockID = BlockID.Sand;
-                    } else {
-                        blockID = BlockID.Grass;
+                    } else { //Grass for the top layer
+                        blockID = biome.surfaceBlock;
                     }
                 } else if (y > terrainHeight - 4) { //Dirt for next 3 layers
                     blockID = BlockID.Dirt;
@@ -76,6 +77,12 @@ public class TerrainGenerator : MonoBehaviour {
                 }
 
                 chunk.data.blocks[blockXInChunk, y, blockZInChunk] = blockID;
+
+                if (y == terrainHeight) {
+
+                    //Generate trees
+
+                }
             }
 
         } catch (System.Exception ex) {
@@ -90,7 +97,7 @@ public class TerrainGenerator : MonoBehaviour {
     /// <param name="blockX">The x coord in the planet</param>
     /// <param name="blockZ">The z coord in the planet</param>
     /// <returns></returns>
-    public double TorusNoise(Planet planet, int blockX, int blockZ) {
+    public double TorusNoise(Planet planet, int blockX, int blockZ, float centerRadius, float tubeRadius) {
         try {
 
             //Normalize the coords to be within 0 and 2pi
@@ -98,9 +105,9 @@ public class TerrainGenerator : MonoBehaviour {
             float angleZ = tau * blockZ / planet.PlanetSizeInVoxels;
 
             //Convert the coords to points on the surface of a torus
-            double torusX = (this.torusCenterRadius + this.torusTubeRadius * Mathf.Cos(angleZ)) * Mathf.Cos(angleX);
-            double torusY = (this.torusCenterRadius + this.torusTubeRadius * Mathf.Cos(angleZ)) * Mathf.Sin(angleX);
-            double torusZ = this.torusTubeRadius * Mathf.Sin(angleZ);
+            double torusX = (centerRadius + tubeRadius * Mathf.Cos(angleZ)) * Mathf.Cos(angleX);
+            double torusY = (centerRadius + tubeRadius * Mathf.Cos(angleZ)) * Mathf.Sin(angleX);
+            double torusZ = tubeRadius * Mathf.Sin(angleZ);
 
             double noiseValue = OpenSimplex.Noise3_Classic(torusX, torusY, torusZ); //Get the noise value
             noiseValue = (noiseValue + 1) / 2; //Normalize the noise value to be between 0 and 1

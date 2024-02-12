@@ -18,6 +18,7 @@ public class Planet : MonoBehaviour {
     public GameObject chunkPrefab;
     public Vector3 spawnPosition;
     public Block[] blockTypes;
+    public Biome[] biomes;
 
     public Chunk[,] chunks;
     private List<Vector2Int> activeChunks = new List<Vector2Int>();
@@ -28,6 +29,7 @@ public class Planet : MonoBehaviour {
     private List<Vector2Int> chunksToPopulate = new List<Vector2Int>();
     private object chunksToPopulateLock = new object();
 
+    [HideInInspector]
     public List<Vector2Int> chunksToMesh = new List<Vector2Int>();
     public object chunksToMeshLock = new object();
 
@@ -51,7 +53,7 @@ public class Planet : MonoBehaviour {
             this.chunkUpdateThread.Start();
 
             CheckRenderDistance(spawnPosition); //Need to do one initial check when the planet loads
-            
+
             Instantiate(this.player);
             this.player.transform.position = this.spawnPosition;
 
@@ -73,15 +75,11 @@ public class Planet : MonoBehaviour {
 
             Vector2Int centerChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y), Mathf.FloorToInt(pos.z));
 
-            //Important: We need to populate chunks in a radius that is 1 greater than the view distance
-            //This is because in order to generate chunk border meshes, the chunks adjacent to the target chunk need to be populated with block data
-            int radius = ViewDistanceInChunks;
+            int minChunkX = centerChunk.x - ViewDistanceInChunks + 1;
+            int maxChunkX = centerChunk.x + ViewDistanceInChunks;
 
-            int minChunkX = centerChunk.x - radius;
-            int maxChunkX = centerChunk.x + radius;
-
-            int minChunkZ = centerChunk.y - radius;
-            int maxChunkZ = centerChunk.y + radius;
+            int minChunkZ = centerChunk.y - ViewDistanceInChunks + 1;
+            int maxChunkZ = centerChunk.y + ViewDistanceInChunks;
 
             for (int i = this.activeChunks.Count - 1; i >= 0; i--) {
 
@@ -89,50 +87,58 @@ public class Planet : MonoBehaviour {
 
                 if (chunkPos.x <= minChunkX || chunkPos.x >= maxChunkX || chunkPos.y <= minChunkZ || chunkPos.y >= maxChunkZ) {
 
+                    this.activeChunks.Remove(chunkPos);
+
                     Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
                     Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                     if (chunk != null && chunk.isRendered) {
                         chunk.Disable();
-                        this.activeChunks.Remove(chunkPos);
                     }
                 }
             }
+
+            List<Vector2Int> chunks = new List<Vector2Int>();
 
             //All chunks within the radius should populated
             for (int x = minChunkX; x <= maxChunkX; x++) {
                 for (int z = minChunkZ; z <= maxChunkZ; z++) {
-
-                    Vector2Int chunkPos = new Vector2Int(x, z);
-                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
-                    Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
-
-                    if (chunk == null) {
-                        chunk = new Chunk(this, normalizedChunkPos);
-                    }
-
-                    if (!chunk.isDataPopulated && !chunksToPopulate.Contains(normalizedChunkPos)) {
-                        lock (chunksToPopulateLock) {
-                            chunksToPopulate.Add(normalizedChunkPos);
-                        }
-                    }
-
-                    //Only chunks within the inner radius should have their meshes created
-                    if (x > minChunkX && x < maxChunkX && z > minChunkZ && z < maxChunkZ) {
-
-                        if (!chunk.isMeshGenerated && !chunksToMesh.Contains(normalizedChunkPos)) {
-                            lock (chunksToMeshLock) {
-                                chunksToMesh.Add(normalizedChunkPos);
-                            }
-                        }
-
-                        if (!activeChunks.Contains(chunkPos)) {
-                            activeChunks.Add(chunkPos);
-                        }
-                    }
+                    chunks.Add(new Vector2Int(x, z));
                 }
             }
 
+            chunks.Sort(new ChunkComparer(centerChunk));
+
+            foreach (Vector2Int chunkPos in chunks) {
+
+                Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
+                Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
+
+                if (chunk == null) {
+                    chunk = new Chunk(this, normalizedChunkPos);
+                }
+
+                if (!chunk.isDataPopulated && !chunksToPopulate.Contains(normalizedChunkPos)) {
+                    lock (chunksToPopulateLock) {
+                        chunksToPopulate.Add(normalizedChunkPos);
+                    }
+                }
+
+                //Only chunks within the inner radius should have their meshes created
+                if (chunkPos.x < maxChunkX && chunkPos.y < maxChunkZ) {
+
+                    if (!chunk.isMeshGenerated && !chunksToMesh.Contains(normalizedChunkPos)) {
+                        lock (chunksToMeshLock) {
+                            chunksToMesh.Add(normalizedChunkPos);
+                        }
+                    }
+
+                    if (!activeChunks.Contains(chunkPos)) {
+                        activeChunks.Add(chunkPos);
+                    }
+                }
+            }
+            
         } catch (Exception ex) {
             Debug.LogError("Error in Planet CheckRenderDistance: " + ex.Message);
         }
@@ -169,8 +175,6 @@ public class Planet : MonoBehaviour {
                     }
 
                     if (proceed) {
-
-                        //Debug.Log(DateTime.Now + " Creating mesh for chunk: " + chunkPos);
                         Chunk chunk = this.chunks[chunkPos.x, chunkPos.y];
                         chunk.CreateMeshData();
                     }
@@ -194,7 +198,6 @@ public class Planet : MonoBehaviour {
                 Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                 if (!chunk.isRendered && chunk.isDataPopulated && chunk.isMeshGenerated) {
-                    //Debug.Log(DateTime.Now + " Rendering chunk: " + chunkPos);
                     chunk.Enable(chunkPos, normalizedChunkPos);
                 }
             }
@@ -205,7 +208,46 @@ public class Planet : MonoBehaviour {
     }  
 }
 
-[System.Serializable]
+public class ChunkComparer : IComparer<Vector2Int> {
+
+    private Vector2Int chunkPos;
+
+    public ChunkComparer(Vector2Int chunkPos) {
+        this.chunkPos = chunkPos;
+    }
+
+    int IComparer<Vector2Int>.Compare(Vector2Int chunkPos1, Vector2Int chunkPos2) {
+
+        int dx1 = Mathf.Abs(this.chunkPos.x - chunkPos1.x);
+        int dz1 = Mathf.Abs(this.chunkPos.y - chunkPos1.y);
+
+        int dx2 = Mathf.Abs(this.chunkPos.x - chunkPos2.x);
+        int dz2 = Mathf.Abs(this.chunkPos.y - chunkPos2.y);
+
+        int ring1 = Mathf.Max(dx1, dz1);
+        int ring2 = Mathf.Max(dx2, dz2);
+
+        if (ring1 > ring2) {
+            return 1;
+        } else if (ring2 > ring1) {
+            return -1;
+        } else {
+
+            int d1 = dx1 + dz1;
+            int d2 = dx2 + dz2;
+
+            if (d1 > d2) {
+                return 1;
+            } else if (d2 > d1) {
+                return -1;
+            } else {
+                return 0;
+            }
+        }
+    }
+}
+
+[Serializable]
 public class Block {
 
     public string blockName;

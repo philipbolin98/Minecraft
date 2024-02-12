@@ -387,7 +387,7 @@ MonoBehaviour:
   seed: 0
   PlanetSizeInChunks: 32
   PlanetSizeInVoxels: 0
-  ViewDistanceInChunks: 4
+  ViewDistanceInChunks: 12
   WorldHeight: 128
   gravity: -9.8
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
@@ -450,6 +450,13 @@ MonoBehaviour:
     leftFaceTexture: 6
     bottomFaceTexture: 6
     backFaceTexture: 6
+  biomes:
+  - name: Plains
+    surfaceBlock: 3
+    maxTerrainHeight: 100
+  - name: Desert
+    surfaceBlock: 6
+    maxTerrainHeight: 100
   chunksToMesh: []
   terrainGenerator: {fileID: 0}
 --- !u!1 &705507993
@@ -909,10 +916,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   OceanFloorLevel: 32
-  SeaLevel: 64
-  MaxTerrainLevel: 100
-  torusCenterRadius: 1
-  torusTubeRadius: 1
+  SeaLevel: 50
+  torusCenterRadius: 0.5
+  torusTubeRadius: 0.5
 --- !u!1 &1154525658
 GameObject:
   m_ObjectHideFlags: 0
