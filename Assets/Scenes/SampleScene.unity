@@ -385,9 +385,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   seed: 0
-  PlanetSizeInChunks: 32
+  PlanetSizeInChunks: 64
   PlanetSizeInVoxels: 0
-  ViewDistanceInChunks: 12
+  ViewDistanceInChunks: 8
   WorldHeight: 128
   gravity: -9.8
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
@@ -450,13 +450,32 @@ MonoBehaviour:
     leftFaceTexture: 6
     bottomFaceTexture: 6
     backFaceTexture: 6
+  - blockName: Wood
+    isSolid: 1
+    rightFaceTexture: 7
+    topFaceTexture: 8
+    frontFaceTexture: 7
+    leftFaceTexture: 7
+    bottomFaceTexture: 8
+    backFaceTexture: 7
+  - blockName: Leaf
+    isSolid: 1
+    rightFaceTexture: 9
+    topFaceTexture: 9
+    frontFaceTexture: 9
+    leftFaceTexture: 9
+    bottomFaceTexture: 9
+    backFaceTexture: 9
   biomes:
   - name: Plains
     surfaceBlock: 3
-    maxTerrainHeight: 100
+    maxTerrainHeight: 128
+  - name: Forest
+    surfaceBlock: 3
+    maxTerrainHeight: 128
   - name: Desert
     surfaceBlock: 6
-    maxTerrainHeight: 100
+    maxTerrainHeight: 128
   chunksToMesh: []
   terrainGenerator: {fileID: 0}
 --- !u!1 &705507993
@@ -915,10 +934,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57a54ec929920244aacd9c7f79af0702, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  OceanFloorLevel: 32
-  SeaLevel: 50
-  torusCenterRadius: 0.5
-  torusTubeRadius: 0.5
+  oceanFloorLevel: 40
+  seaLevel: 64
+  treeThreshold: 0.75
+  torusCenterRadius: 256
+  torusTubeRadius: 256
 --- !u!1 &1154525658
 GameObject:
   m_ObjectHideFlags: 0

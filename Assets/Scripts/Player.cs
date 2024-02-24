@@ -19,7 +19,7 @@ public class Player : MonoBehaviour {
 
     private float mouseSensitivity = 3f;
     private float playerRadius = .25f;
-    private float playerHeight = 2f;
+    private float playerHeight = 1.8f;
 
     private float horizontal;
     private float vertical;
@@ -53,7 +53,7 @@ public class Player : MonoBehaviour {
             placeHighlightBlock = GameObject.Find("PlaceBlock");
 
             currentPosition = transform.position;
-            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
+            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
 
             Cursor.lockState = CursorLockMode.Locked;
 
@@ -75,7 +75,7 @@ public class Player : MonoBehaviour {
 
             transform.position = currentPosition;
 
-            Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
+            Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
 
             if (newChunk.x != currentChunk.x || newChunk.y != currentChunk.y) {
                 currentChunk = newChunk;
@@ -367,11 +367,16 @@ public class Player : MonoBehaviour {
 
             //Apply vertical momentum
             velocity += Time.fixedDeltaTime * verticalMomentum * Vector3.up;
-
-            if (velocity.y < 0 && CheckBottom(velocity.y)) {
-                velocity.y = 0;
-            } else if (velocity.y > 0 && CheckTop(velocity.y)) {
-                velocity.y = 0;
+            
+            if (velocity.y < 0) {
+                if (CheckBottom()) {
+                    velocity.y = 0;
+                }
+            } else if (velocity.y > 0) {
+                if (CheckTop()) {
+                    velocity.y = 0;
+                    verticalMomentum = 0;
+                }
             }
 
             Vector3 nextPosition = this.currentPosition + velocity;
@@ -499,10 +504,10 @@ public class Player : MonoBehaviour {
         }
     }
 
-    private bool CheckBottom(float downSpeed) {
+    private bool CheckBottom() {
         try {
 
-            int y = Mathf.FloorToInt(transform.position.y + downSpeed);
+            int y = Mathf.FloorToInt(transform.position.y + velocity.y);
             int minX = Mathf.FloorToInt(transform.position.x - playerRadius);
             int maxX = Mathf.FloorToInt(transform.position.x + playerRadius);
             int minZ = Mathf.FloorToInt(transform.position.z - playerRadius);
@@ -525,10 +530,10 @@ public class Player : MonoBehaviour {
         }
     }
 
-    private bool CheckTop(float upSpeed) {
+    private bool CheckTop() {
         try {
 
-            int y = Mathf.FloorToInt(transform.position.y + playerHeight + upSpeed);
+            int y = Mathf.FloorToInt(transform.position.y + playerHeight + velocity.y);
             int minX = Mathf.FloorToInt(transform.position.x - playerRadius);
             int maxX = Mathf.FloorToInt(transform.position.x + playerRadius);
             int minZ = Mathf.FloorToInt(transform.position.z - playerRadius);
@@ -550,7 +555,8 @@ public class Player : MonoBehaviour {
     private bool CheckSide(VoxelData.BlockFace side) {
         try {
 
-            int y = Mathf.FloorToInt(currentPosition.y);
+            int minY = Mathf.FloorToInt(currentPosition.y);
+            int maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1);
             int x, z;
 
             switch (side) {
@@ -574,11 +580,16 @@ public class Player : MonoBehaviour {
                     return true;
             }
 
-            return HelperFunctions.CheckBlockInPlanet(planet, x, y, z) || HelperFunctions.CheckBlockInPlanet(planet, x, y + 1, z);
+            for (int y = minY; y <= maxY; y++) {
+                if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
+                    return true;
+                }
+            }
 
         } catch (Exception ex) {
             Debug.LogError("Error in Player CheckSide: " + ex.Message);
-            return true;
         }
+
+        return false;
     }
 }

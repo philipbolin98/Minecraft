@@ -1,33 +1,39 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.XR;
 
 public class Chunk {
 
-    public static readonly Vector2Int[] ChunksToCheckForMeshCreation = new Vector2Int[3]{
-        new Vector2Int(0, 0),
+    public static readonly Vector2Int[] NeighboringChunks = new Vector2Int[8]{
+        new Vector2Int(-1, 1),
         new Vector2Int(0, 1),
-        new Vector2Int(1, 0)
+        new Vector2Int(1, 1),
+        new Vector2Int(1, 0),
+        new Vector2Int(1, -1),
+        new Vector2Int(0, -1),
+        new Vector2Int(-1, -1),
+        new Vector2Int(-1, 0)
     };
 
     public MeshFilter meshFilter;
     public MeshCollider meshCollider;
-    public Mesh mesh = new Mesh();
+    public Mesh mesh = new();
     public GameObject gameObject;
     public Vector2Int pos;
     public Planet planet;
     public ChunkData data;
 
-    private List<Vector3> vertices = new List<Vector3>();
-    private List<int> triangles = new List<int>();
-    private List<int> waterTriangles = new List<int>();
-    private List<Vector2> uvs = new List<Vector2>();
+    private List<Vector3> vertices = new();
+    private List<int> triangles = new();
+    private List<int> waterTriangles = new();
+    private List<Vector2> uvs = new();
 
     private int vertexIndex = 0;
 
-    public bool isDataPopulated = false;
-    public bool isMeshGenerated = false;
-    public bool isRendered = false;
+    public Dictionary<Vector3Int, string> structures = new();
+
+    public ChunkStage stage = ChunkStage.Null;
 
     /// <summary>
     /// Creates a new chunk object and renders it
@@ -51,7 +57,7 @@ public class Chunk {
     /// <summary>
     /// Popuplates the current chunk data with all its voxels
     /// </summary>
-    public void Popuplate(Planet planet) {
+    public void Popuplate() {
         try {
 
             for (int x = 0; x < VoxelData.ChunkSize; x++) {
@@ -60,7 +66,7 @@ public class Chunk {
                 }
             }
 
-            this.isDataPopulated = true;
+            this.stage = this.structures.Count == 0 ? ChunkStage.StructuresGenerated : ChunkStage.DataPopulated;
 
         } catch (Exception e) {
             Debug.LogError("Error in Chunk Popuplate: " + e.Message);
@@ -81,6 +87,23 @@ public class Chunk {
         }
     }
 
+    public void GenerateStructures() {
+        try {
+
+            foreach (KeyValuePair<Vector3Int, string> kvp in this.structures) {
+                Vector3Int blockPos = kvp.Key;
+                string biomeName = kvp.Value;
+                this.planet.terrainGenerator.GenerateTree(this, biomeName, blockPos.x, blockPos.y, blockPos.z);
+            }
+
+            this.structures.Clear();
+            this.stage = ChunkStage.StructuresGenerated;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk GenerateStructures: " + ex.Message);
+        }
+    }
+
     /// <summary>
     /// Generates the chunk mesh based on its block data
     /// </summary>
@@ -97,7 +120,7 @@ public class Chunk {
                 }
             }
 
-            this.isMeshGenerated = true;
+            this.stage = ChunkStage.MeshCreated;
 
         } catch (Exception e) {
             Debug.LogError("Error in function Chunk.CreateMeshData: " + e.Message);
@@ -115,7 +138,7 @@ public class Chunk {
 
             BlockID blockID = this.data.blocks[blockXInChunk, blockYInChunk, blockZInChunk]; //Get the block id
 
-            Vector3Int blockPosInChunk = new Vector3Int(blockXInChunk, blockYInChunk, blockZInChunk);
+            Vector3Int blockPosInChunk = new(blockXInChunk, blockYInChunk, blockZInChunk);
 
             for (int face = 0; face < 3; face++) {
 
@@ -259,7 +282,7 @@ public class Chunk {
             this.planet.unusedChunkObjects.Enqueue(this.gameObject);
             this.gameObject = null;
             this.meshFilter.mesh = null;
-            this.isRendered = false;
+            this.stage = ChunkStage.MeshCreated;
         
         } catch (Exception ex) {
             Debug.LogError("Error in Chunk Disable: " + ex.Message);
@@ -290,7 +313,7 @@ public class Chunk {
             this.gameObject.SetActive(true);
 
             this.CreateMesh();
-            this.isRendered = true;
+            this.stage = ChunkStage.Rendered;
 
         } catch (Exception ex) {
             Debug.LogError("Error in Chunk Enable: " + ex.Message);
@@ -313,4 +336,12 @@ public class ChunkData {
             Debug.LogError("Error in ChunkData Constructor: " + ex.Message);
         }
     }
+}
+
+public enum ChunkStage {
+    Null = 0,
+    DataPopulated = 1,
+    MeshCreated = 2,
+    StructuresGenerated = 3,
+    Rendered = 4
 }

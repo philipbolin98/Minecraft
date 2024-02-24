@@ -8,7 +8,7 @@ public static class HelperFunctions {
     /// <param name="blockX"></param>
     /// <param name="blockZ"></param>
     /// <returns></returns>
-    public static Vector2Int GetChunkPosFromBlockPos(int blockX, int blockY, int blockZ) {
+    public static Vector2Int GetChunkPosFromBlockPos(int blockX, int blockZ) {
 		try {
 
             int chunkX = Mathf.FloorToInt(blockX / VoxelData.ChunkSize);
@@ -160,12 +160,12 @@ public static class HelperFunctions {
             blockX = normalizedBlockPos.x;
             blockZ = normalizedBlockPos.z;
 
-            Vector2Int chunkPos = GetChunkPosFromBlockPos(blockX, blockY, blockZ);
+            Vector2Int chunkPos = GetChunkPosFromBlockPos(blockX, blockZ);
             chunkPos = GetNormalizedChunkPos(planet, chunkPos.x, chunkPos.y);
 
             Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
 
-            if (chunk == null || !chunk.isDataPopulated) {
+            if (chunk == null || chunk.stage == ChunkStage.Null) {
                 return BlockID.Air;
             }
 
@@ -225,7 +225,7 @@ public static class HelperFunctions {
             }
 
             Vector3Int normalizedBlockPos = GetNormalizedBlockPosInPlanet(planet, blockX, blockY, blockZ);
-            Vector2Int chunkPos = GetChunkPosFromBlockPos(normalizedBlockPos.x, normalizedBlockPos.y, normalizedBlockPos.z);
+            Vector2Int chunkPos = GetChunkPosFromBlockPos(normalizedBlockPos.x, normalizedBlockPos.z);
             Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
             return chunk;
 
@@ -235,15 +235,28 @@ public static class HelperFunctions {
         }
     }
 
-    public static bool CanChunkMeshBeCreated(Planet planet, Vector2Int chunkPos) {
+    public static bool CheckNeighboringChunks(Planet planet, Vector2Int chunkPos, Vector2Int[] neighborOffsets, ChunkStage stage) {
         try {
 
-            foreach (Vector2Int offset in Chunk.ChunksToCheckForMeshCreation) {
+            foreach (Vector2Int offset in neighborOffsets) {
 
-                Vector2Int normalizedChunkPos = GetNormalizedChunkPos(planet, chunkPos + offset);
-                Chunk chunk = planet.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
+                Vector2Int newChunkPos = chunkPos + offset;
 
-                if (chunk == null || !chunk.isDataPopulated) {
+                if (newChunkPos.x == planet.PlanetSizeInChunks) {
+                    newChunkPos.x = 0;
+                } else if (newChunkPos.x == -1) {
+                    newChunkPos.x = planet.PlanetSizeInChunks - 1;
+                }
+
+                if (newChunkPos.y == planet.PlanetSizeInChunks) {
+                    newChunkPos.y = 0;
+                } else if (newChunkPos.y == -1) {
+                    newChunkPos.y = planet.PlanetSizeInChunks - 1;
+                }
+
+                Chunk chunk = planet.chunks[newChunkPos.x, newChunkPos.y];
+
+                if (chunk == null || chunk.stage < stage) {
                     return false;
                 }
             }
@@ -251,7 +264,7 @@ public static class HelperFunctions {
             return true;
 
         } catch (System.Exception ex) {
-            Debug.LogError("Error in HelperFunctions CanChunkMeshBeCreated: " + ex.Message);
+            Debug.LogError("Error in HelperFunctions CanChunkStructuresBeGenerated: " + ex.Message);
             return false;
         }
     }
