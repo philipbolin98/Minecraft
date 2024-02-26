@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using UnityEditor.U2D;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,19 +8,23 @@ public class Player : MonoBehaviour {
 
     public float walkSpeed;
     public float sprintSpeed;
+    public float crouchSpeed;
     public float jumpForce;
     public float reach;
 
     private bool isGrounded;
     private bool isSprinting;
+    private bool isCrouching;
     private Vector2Int currentChunk;
 
     private Transform cam;
     private Planet planet;
 
     private float mouseSensitivity = 3f;
-    private float playerRadius = .25f;
-    private float playerHeight = 1.8f;
+    private static float playerRadius = .25f;
+    private static float playerStandHeight = 1.8f;
+    private static float playerCrouchHeight = 1.4f;
+    private float playerHeight = playerStandHeight;
 
     private float horizontal;
     private float vertical;
@@ -201,10 +206,10 @@ public class Player : MonoBehaviour {
 
             if (cam.forward.x > 0) {
                 blockPos = startBlockPos + Vector3Int.right;
-                hit = LiangBarsky3D(startPos, endPos, blockPos);
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
             } else if (cam.forward.x < 0) {
                 blockPos = startBlockPos + Vector3Int.left;
-                hit = LiangBarsky3D(startPos, endPos, blockPos);
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
             }
 
             if (hit) {
@@ -219,10 +224,10 @@ public class Player : MonoBehaviour {
 
             if (cam.forward.y > 0) {
                 blockPos = startBlockPos + Vector3Int.up;
-                hit = LiangBarsky3D(startPos, endPos, blockPos);
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
             } else if (cam.forward.y < 0) {
                 blockPos = startBlockPos + Vector3Int.down;
-                hit = LiangBarsky3D(startPos, endPos, blockPos);
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
             }
 
             if (hit) {
@@ -237,10 +242,10 @@ public class Player : MonoBehaviour {
 
             if (cam.forward.z > 0) {
                 blockPos = startBlockPos + Vector3Int.forward;
-                hit = LiangBarsky3D(startPos, endPos, blockPos);
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
             } else if (cam.forward.z < 0) {
                 blockPos = startBlockPos + Vector3Int.back;
-                hit = LiangBarsky3D(startPos, endPos, blockPos);
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
             }
 
             if (hit) {
@@ -258,88 +263,6 @@ public class Player : MonoBehaviour {
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Liang Barsky line clipping algorithm extrapolated to 3D
-    /// Determines if a ray intersects a block at a given position
-    /// See: https://en.wikipedia.org/wiki/Liang%E2%80%93Barsky_algorithm
-    /// </summary>
-    /// <param name="pos1">The camera position</param>
-    /// <param name="pos2">The camera position + reach</param>
-    /// <param name="blockPos">The block to check for an intersection</param>
-    /// <returns>True/False</returns>
-    public bool LiangBarsky3D(Vector3 pos1, Vector3 pos2, Vector3Int blockPos) {
-        try {
-
-            int xMin = blockPos.x;
-            int yMin = blockPos.y;
-            int zMin = blockPos.z;
-            int xMax = xMin + 1;
-            int yMax = yMin + 1;
-            int zMax = zMin + 1;
-
-            float p1 = -(pos2.x - pos1.x);
-            float p2 = -p1;
-            float p3 = -(pos2.y - pos1.y);
-            float p4 = -p3;
-            float p5 = -(pos2.z - pos1.z);
-            float p6 = -p5;
-
-            float q1 = pos1.x - xMin;
-            float q2 = xMax - pos1.x;
-            float q3 = pos1.y - yMin;
-            float q4 = yMax - pos1.y;
-            float q5 = pos1.z - zMin;
-            float q6 = zMax - pos1.z;
-
-            if ((p1 == 0 && q1 < 0) || (p2 == 0 && q2 < 0) || (p3 == 0 && q3 < 0) || (p4 == 0 && q4 < 0) || (p5 == 0 && q5 < 0) || (p6 == 0 && q6 < 0)) {
-                return false;
-            }
-
-            float min = 1;
-            float max = 0;
-
-            LiangBarsky3DHelper(p1, p2, q1, q2, ref min, ref max);
-            LiangBarsky3DHelper(p3, p4, q3, q4, ref min, ref max);
-            LiangBarsky3DHelper(p5, p6, q5, q6, ref min, ref max);
-
-            return max <= min;
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player LiangBarsky3D: " + ex.Message);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Helper function for the repetitive portion of LiangBarsky3D
-    /// </summary>
-    /// <param name="p1"></param>
-    /// <param name="p2"></param>
-    /// <param name="q1"></param>
-    /// <param name="q2"></param>
-    /// <param name="min"></param>
-    /// <param name="max"></param>
-    private void LiangBarsky3DHelper(float p1, float p2, float q1, float q2, ref float min, ref float max) {
-        try {
-
-            if (p1 != 0) {
-                float r1 = q1 / p1;
-                float r2 = q2 / p2;
-
-                if (p1 < 0) {
-                    max = Mathf.Max(max, r1);
-                    min = Mathf.Min(min, r2);
-                } else {
-                    max = Mathf.Max(max, r2);
-                    min = Mathf.Min(min, r1);
-                }
-            }
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player LiangBarsky3DHelper: " + ex.Message);
-        }
     }
 
     void Jump() {
@@ -362,7 +285,18 @@ public class Player : MonoBehaviour {
                 verticalMomentum += Time.fixedDeltaTime * this.planet.gravity;
             }
 
-            float speedModifier = isSprinting ? sprintSpeed : walkSpeed;
+            float speedModifier;
+
+            if (isCrouching) {
+                speedModifier = crouchSpeed;
+                playerHeight = playerCrouchHeight;
+            } else {
+                speedModifier = isSprinting ? sprintSpeed : walkSpeed;
+                playerHeight = playerStandHeight;
+            }
+
+            cam.localPosition = new Vector3(0, playerHeight - .2f, -.15f);
+
             velocity = speedModifier * Time.deltaTime * ((transform.forward * vertical) + (transform.right * horizontal));
 
             //Apply vertical momentum
@@ -438,6 +372,14 @@ public class Player : MonoBehaviour {
             rotationX -= Input.GetAxis("Mouse Y") * mouseSensitivity;
             rotationX = Mathf.Clamp(rotationX, -90f, 90f);
 
+            if (Input.GetButtonDown("Crouch")) {
+                isCrouching = true;
+            }
+
+            if (Input.GetButtonUp("Crouch")) {
+                isCrouching = false;
+            }
+
             if (Input.GetButtonDown("Sprint")) {
                 isSprinting = true;
             }
@@ -474,7 +416,7 @@ public class Player : MonoBehaviour {
 
             Chunk chunk = HelperFunctions.GetChunkFromBlockPos(this.planet, blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z);
 
-            if (chunk == null) {
+            if (chunk == null || chunk.stage < ChunkStage.Rendered) {
                 return;
             }
 

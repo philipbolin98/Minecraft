@@ -45,9 +45,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbfb73a16a8d20a458a582579e5069d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 10
-  sprintSpeed: 20
-  jumpForce: 10
+  walkSpeed: 5
+  sprintSpeed: 10
+  crouchSpeed: 2
+  jumpForce: 5
   reach: 5
   velocity: {x: 0, y: 0, z: 0}
 --- !u!1 &2739253966453547233
