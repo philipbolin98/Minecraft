@@ -21,6 +21,7 @@ public class Chunk {
     public Mesh mesh = new();
     public GameObject gameObject;
     public Vector2Int pos;
+    public Vector2Int posInBlocks;
     public Planet planet;
     public ChunkData data;
 
@@ -45,6 +46,7 @@ public class Chunk {
         try {
 
             this.pos = pos;
+            this.posInBlocks = pos * VoxelData.ChunkSize;
             this.planet = planet;
             this.data = new ChunkData(planet);
             planet.chunks[pos.x, pos.y] = this;

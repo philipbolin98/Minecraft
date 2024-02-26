@@ -367,46 +367,57 @@ public class Player : MonoBehaviour {
 
             //Apply vertical momentum
             velocity += Time.fixedDeltaTime * verticalMomentum * Vector3.up;
-            
+
+            Vector3 nextPosition = this.currentPosition;
+
             if (velocity.y < 0) {
-                if (CheckBottom()) {
+                if (CheckTopOrBottom(nextPosition, VoxelData.BlockFace.Bottom)) {
+                    nextPosition.y = Mathf.CeilToInt(nextPosition.y + velocity.y);
                     velocity.y = 0;
+                    isGrounded = true;
+                } else {
+                    nextPosition.y += velocity.y;
+                    isGrounded = false;
                 }
             } else if (velocity.y > 0) {
-                if (CheckTop()) {
+                if (CheckTopOrBottom(nextPosition, VoxelData.BlockFace.Top)) {
+                    nextPosition.y = Mathf.FloorToInt(nextPosition.y + velocity.y + playerHeight) - playerHeight;
                     velocity.y = 0;
                     verticalMomentum = 0;
-                }
-            }
-
-            Vector3 nextPosition = this.currentPosition + velocity;
-
-            if (isGrounded) {       
-                nextPosition.y = Mathf.Clamp(nextPosition.y, nextPosition.y - 1, Mathf.Floor(transform.position.y));
-            }
-
-            //Check if running into any blocks in all four directions
-            if (velocity.z > 0) {
-                if (CheckSide(VoxelData.BlockFace.Front)) {
-                    velocity.z = 0;
-                    nextPosition.z = Mathf.FloorToInt(nextPosition.z + playerRadius) - playerRadius;
-                }
-            } else if (velocity.z < 0) {
-                if (CheckSide(VoxelData.BlockFace.Back)) {
-                    velocity.z = 0;
-                    nextPosition.z = Mathf.CeilToInt(nextPosition.z - playerRadius) + playerRadius;
+                } else {
+                    nextPosition.y += velocity.y;
                 }
             }
 
             if (velocity.x > 0) {
-                if (CheckSide(VoxelData.BlockFace.Left)) {
+                if (CheckSide(nextPosition, VoxelData.BlockFace.Right)) {
+                    nextPosition.x = Mathf.FloorToInt(nextPosition.x + velocity.x + playerRadius) - playerRadius;
                     velocity.x = 0;
-                    nextPosition.x = Mathf.FloorToInt(nextPosition.x + playerRadius) - playerRadius;
+                } else {
+                    nextPosition.x += velocity.x;
                 }
             } else if (velocity.x < 0) {
-                if (CheckSide(VoxelData.BlockFace.Right)) {
+                if (CheckSide(nextPosition, VoxelData.BlockFace.Left)) {
+                    nextPosition.x = Mathf.CeilToInt(nextPosition.x + velocity.x - playerRadius) + playerRadius;
                     velocity.x = 0;
-                    nextPosition.x = Mathf.CeilToInt(nextPosition.x - playerRadius) + playerRadius;
+                } else {
+                    nextPosition.x += velocity.x;
+                }
+            }
+
+            if (velocity.z > 0) {
+                if (CheckSide(nextPosition, VoxelData.BlockFace.Front)) {
+                    nextPosition.z = Mathf.FloorToInt(nextPosition.z + velocity.z + playerRadius) - playerRadius;
+                    velocity.z = 0;
+                } else {
+                    nextPosition.z += velocity.z;
+                }
+            } else if (velocity.z < 0) {
+                if (CheckSide(nextPosition, VoxelData.BlockFace.Back)) {
+                    nextPosition.z = Mathf.CeilToInt(nextPosition.z + velocity.z - playerRadius) + playerRadius;
+                    velocity.z = 0;
+                } else {
+                    nextPosition.z += velocity.z;
                 }
             }
 
@@ -467,7 +478,7 @@ public class Player : MonoBehaviour {
                 return;
             }
 
-            Vector3Int blockPosInChunk = HelperFunctions.GetNormalizedBlockPosInChunk(blockPosInPlanet);
+            Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, VoxelData.ChunkSize);
 
             chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
 
@@ -489,7 +500,7 @@ public class Player : MonoBehaviour {
     private void RegenerateMesh(Vector2Int chunkPos) {
         try {
 
-            chunkPos = HelperFunctions.GetNormalizedChunkPos(this.planet, chunkPos);
+            chunkPos = HelperFunctions.NormalizeChunkPos(this.planet, chunkPos);
             Chunk chunk = this.planet.chunks[chunkPos.x, chunkPos.y];
 
             if (chunk == null) {
@@ -504,85 +515,73 @@ public class Player : MonoBehaviour {
         }
     }
 
-    private bool CheckBottom() {
+    private bool CheckTopOrBottom(Vector3 pos, VoxelData.BlockFace side) {
         try {
 
-            int y = Mathf.FloorToInt(transform.position.y + velocity.y);
-            int minX = Mathf.FloorToInt(transform.position.x - playerRadius);
-            int maxX = Mathf.FloorToInt(transform.position.x + playerRadius);
-            int minZ = Mathf.FloorToInt(transform.position.z - playerRadius);
-            int maxZ = Mathf.FloorToInt(transform.position.z + playerRadius);
+            int y = Mathf.FloorToInt(pos.y + velocity.y + (side == VoxelData.BlockFace.Top ? playerHeight : 0));
+            int minX = Mathf.FloorToInt(pos.x - playerRadius);
+            int maxX = Mathf.CeilToInt(pos.x + playerRadius);
+            int minZ = Mathf.FloorToInt(pos.z - playerRadius);
+            int maxZ = Mathf.CeilToInt(pos.z + playerRadius);
 
-            if (HelperFunctions.CheckBlockInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckBlockInPlanet(planet, maxX, y, minZ) ||
-                HelperFunctions.CheckBlockInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckBlockInPlanet(planet, minX, y, maxZ)) {
-
-                isGrounded = true;
-                return true;
-
-            } else {
-                isGrounded = false;
-                return false;
+            for (int x = minX; x < maxX; x++) {
+                for (int z = minZ; z < maxZ; z++) {
+                    if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
+                        return true;
+                    }
+                }
             }
 
         } catch (Exception ex) {
             Debug.LogError("Error in Player CheckBottom: " + ex.Message);
-            return true;
         }
+
+        return false;
     }
 
-    private bool CheckTop() {
-        try {
-
-            int y = Mathf.FloorToInt(transform.position.y + playerHeight + velocity.y);
-            int minX = Mathf.FloorToInt(transform.position.x - playerRadius);
-            int maxX = Mathf.FloorToInt(transform.position.x + playerRadius);
-            int minZ = Mathf.FloorToInt(transform.position.z - playerRadius);
-            int maxZ = Mathf.FloorToInt(transform.position.z + playerRadius);
-
-            if (HelperFunctions.CheckBlockInPlanet(planet, minX, y, minZ) || HelperFunctions.CheckBlockInPlanet(planet, maxX, y, minZ) || 
-                HelperFunctions.CheckBlockInPlanet(planet, maxX, y, maxZ) || HelperFunctions.CheckBlockInPlanet(planet, minX, y, maxZ)) {
-                return true;
-            } else {
-                return false;
-            }
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player CheckTop: " + ex.Message);
-            return true;
-        }
-    }
-
-    private bool CheckSide(VoxelData.BlockFace side) {
+    private bool CheckSide(Vector3 pos, VoxelData.BlockFace side) {
         try {
 
             int minY = Mathf.FloorToInt(currentPosition.y);
             int maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1);
-            int x, z;
+            int minX, minZ, maxX, maxZ;
 
             switch (side) {
-                case VoxelData.BlockFace.Left:
-                    x = Mathf.FloorToInt(currentPosition.x + velocity.x + playerRadius);
-                    z = Mathf.FloorToInt(currentPosition.z);
-                    break;
                 case VoxelData.BlockFace.Right:
-                    x = Mathf.FloorToInt(currentPosition.x + velocity.x - playerRadius);
-                    z = Mathf.FloorToInt(currentPosition.z);
+                    minX = Mathf.FloorToInt(pos.x + velocity.x + playerRadius);
+                    maxX = minX + 1;
+                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
+                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
+                    break;
+                case VoxelData.BlockFace.Left:
+                    minX = Mathf.FloorToInt(pos.x + velocity.x - playerRadius);
+                    maxX = minX + 1;
+                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
+                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
                     break;
                 case VoxelData.BlockFace.Front:
-                    x = Mathf.FloorToInt(currentPosition.x);
-                    z = Mathf.FloorToInt(currentPosition.z + velocity.z + playerRadius);
+                    minX = Mathf.FloorToInt(pos.x - playerRadius);
+                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
+                    minZ = Mathf.FloorToInt(pos.z + velocity.z + playerRadius);
+                    maxZ = minZ + 1;
                     break;
                 case VoxelData.BlockFace.Back:
-                    x = Mathf.FloorToInt(currentPosition.x);
-                    z = Mathf.FloorToInt(currentPosition.z + velocity.z - playerRadius);
+                    minX = Mathf.FloorToInt(pos.x - playerRadius);
+                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
+                    minZ = Mathf.FloorToInt(pos.z + velocity.z - playerRadius);
+                    maxZ = minZ + 1;
                     break;
                 default:
-                    return true;
+                    return false;
             }
 
-            for (int y = minY; y <= maxY; y++) {
-                if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
-                    return true;
+            for (int x = minX; x < maxX; x++) {
+                for (int z = minZ; z < maxZ; z++) {
+                    for (int y = minY; y <= maxY; y++) {
+                        if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
+                            return true;
+                        }
+                    }
                 }
             }
 

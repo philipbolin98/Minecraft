@@ -24,6 +24,9 @@ public class TerrainGenerator : MonoBehaviour {
     /// </summary>
     public float torusTubeRadius;
 
+    public float torusCenterRadiusBiomes;
+    public float torusTubeRadiusBiomes;
+
     public void Initialize(int seed) {
         try {
 
@@ -32,7 +35,10 @@ public class TerrainGenerator : MonoBehaviour {
 
             FastNoise = new FastNoiseLite(seed);
             FastNoise.SetNoiseType(FastNoiseLite.NoiseType.ValueCubic);
-            
+
+            torusCenterRadiusBiomes = torusCenterRadius / 4;
+            torusTubeRadiusBiomes = torusTubeRadius / 4;
+
         } catch (Exception ex) {
             Debug.LogError("Error in TerrainGenerator Initialize: " + ex.Message);
         }
@@ -43,18 +49,19 @@ public class TerrainGenerator : MonoBehaviour {
 
             Planet planet = chunk.planet;
 
-            int blockXInPlanet = (VoxelData.ChunkSize * chunk.pos.x) + blockXInChunk;
-            int blockZInPlanet = (VoxelData.ChunkSize * chunk.pos.y) + blockZInChunk;
+            int blockXInPlanet = chunk.posInBlocks.x + blockXInChunk;
+            int blockZInPlanet = chunk.posInBlocks.y + blockZInChunk;
 
             //FastNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
 
-            float biomeNoiseValue = TorusNoise(planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius / 4, this.torusTubeRadius / 4);
+            float biomeNoiseValue = TorusNoise(planet, blockXInPlanet, blockZInPlanet, torusCenterRadiusBiomes, torusTubeRadiusBiomes);
             int biomeIndex = Mathf.FloorToInt(biomeNoiseValue * planet.biomes.Length);
             Biome biome = planet.biomes[biomeIndex];
 
             float noiseValue = TorusNoise(planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius, this.torusTubeRadius);
             int terrainHeight = oceanFloorLevel + Mathf.FloorToInt((biome.maxTerrainHeight - oceanFloorLevel) * noiseValue);
-            
+            int treeLevel = terrainHeight + 1;
+
             for (int y = 0; y < planet.WorldHeight; y++) {
 
                 if (chunk.data.blocks[blockXInChunk, y, blockZInChunk] > BlockID.Air) {
@@ -85,7 +92,7 @@ public class TerrainGenerator : MonoBehaviour {
                     blockID = BlockID.Stone;
                 }
 
-                if (y == terrainHeight + 1 && y >= seaLevel && biome.name != "Plains") {
+                if (y == treeLevel && y >= seaLevel && biome.name != "Plains") {
 
                     float treeValue = Noise2D(blockXInPlanet * 256, blockZInPlanet * 256);
 
@@ -103,33 +110,89 @@ public class TerrainGenerator : MonoBehaviour {
         }
     }
 
-    public void GenerateTree(Chunk chunk, string biomeName, int blockXInChunk, int y, int blockZInChunk) {
+    public void GenerateTree(Chunk chunk, string biomeName, int startX, int startY, int startZ) {
         try {
+
+            //Not sure if im going to use this method yet
+            //foreach (Tuple<Vector3Int, BlockID> block in Structures.tree) {
+
+            //    int y = startY + block.Item1.y;
+
+            //    if (y < chunk.planet.WorldHeight) {
+
+            //        int x = startX + block.Item1.x;
+            //        int z = startZ + block.Item1.z;
+
+            //        Vector2Int chunkPos = chunk.pos;
+
+            //        if (x >= VoxelData.ChunkSize) {
+            //            x = Mathf.FloorToInt(HelperFunctions.Modulo(x, VoxelData.ChunkSize));
+            //            chunkPos.x++;
+
+            //            if (chunkPos.x == chunk.planet.PlanetSizeInChunks) {
+            //                chunkPos.x = 0;
+            //            }
+
+            //        } else if (x < 0) {
+            //            x = Mathf.FloorToInt(HelperFunctions.Modulo(x, VoxelData.ChunkSize));
+            //            chunkPos.x--;
+
+            //            if (chunkPos.x == -1) {
+            //                chunkPos.x = chunk.planet.PlanetSizeInChunks - 1;
+            //            }
+            //        }
+
+            //        if (z >= VoxelData.ChunkSize) {
+            //            z = Mathf.FloorToInt(HelperFunctions.Modulo(z, VoxelData.ChunkSize));
+            //            chunkPos.y++;
+
+            //            if (chunkPos.y == chunk.planet.PlanetSizeInChunks) {
+            //                chunkPos.y = 0;
+            //            }
+
+            //        } else if (z < 0) {
+            //            z = Mathf.FloorToInt(HelperFunctions.Modulo(z, VoxelData.ChunkSize));
+            //            chunkPos.y--;
+
+            //            if (chunkPos.y == -1) {
+            //                chunkPos.y = chunk.planet.PlanetSizeInChunks - 1;
+            //            }
+            //        }
+
+            //        Chunk newChunk = chunk.planet.chunks[chunkPos.x, chunkPos.y];
+
+            //        BlockID currentBlockID = newChunk.data.blocks[x, y, z];
+
+            //        if (currentBlockID == BlockID.Air) {
+            //            newChunk.data.blocks[x, y, z] = block.Item2;
+            //        }
+            //    }
+            //}
 
             for (int i = 0; i < 6; i++) {
 
-                int treeY = y + i;
+                int treeY = startY + i;
 
                 if (treeY < chunk.planet.WorldHeight) {
 
-                    BlockID currentBlockID = chunk.data.blocks[blockXInChunk, treeY, blockZInChunk];
+                    BlockID currentBlockID = chunk.data.blocks[startX, treeY, startZ];
 
                     if (currentBlockID == BlockID.Air || currentBlockID == BlockID.Leaf) {
-                        chunk.data.blocks[blockXInChunk, treeY, blockZInChunk] = BlockID.Wood;
+                        chunk.data.blocks[startX, treeY, startZ] = BlockID.Wood;
                     }
                 }
             }
 
             for (int i = 4; i < 7; i++) {
 
-                int treeY = y + i;
+                int treeY = startY + i;
 
                 if (treeY < chunk.planet.WorldHeight) {
 
                     int radius = 6 - i;
 
-                    for (int j = blockXInChunk - radius; j <= blockXInChunk + radius; j++) {
-                        for (int k = blockZInChunk - radius; k <= blockZInChunk + radius; k++) {
+                    for (int j = startX - radius; j <= startX + radius; j++) {
+                        for (int k = startZ - radius; k <= startZ + radius; k++) {
 
                             Vector2Int chunkPos = chunk.pos;
                             int x = j;

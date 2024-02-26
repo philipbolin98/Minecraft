@@ -54,6 +54,7 @@ public class Planet : MonoBehaviour {
             this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
             this.terrainGenerator.Initialize(this.seed);
 
+            //TO DO: Implement wait handles for these 3 threads so that they are not running in infinite loops
             this.chunkPopulateThread = new Thread(new ThreadStart(PopulateChunks));
             this.chunkPopulateThread.Start();
 
@@ -100,7 +101,7 @@ public class Planet : MonoBehaviour {
 
                     this.chunksInView.Remove(chunkPos);
 
-                    Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
+                    Vector2Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y);
                     Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                     if (chunk != null && chunk.stage == ChunkStage.Rendered) {
@@ -122,7 +123,7 @@ public class Planet : MonoBehaviour {
 
             foreach (Vector2Int chunkPos in chunks) {
 
-                Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
+                Vector2Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y);
                 Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                 if (chunk == null) {
@@ -184,6 +185,8 @@ public class Planet : MonoBehaviour {
             } catch (Exception ex) {
                 Debug.LogError("Error in Planet PopulateChunks: " + ex.Message);
             }
+
+            Thread.Sleep(10);
         }
     }
 
@@ -226,6 +229,8 @@ public class Planet : MonoBehaviour {
             } catch (Exception ex) {
                 Debug.LogError("Error in Planet GenerateStructures: " + ex.Message);
             }
+
+            Thread.Sleep(10);
         }
     }
 
@@ -264,6 +269,8 @@ public class Planet : MonoBehaviour {
             } catch (Exception ex) {
                 Debug.LogError("Error in Planet CreateChunkMeshes: " + ex.Message);
             }
+
+            Thread.Sleep(10);
         }
     }
 
@@ -275,7 +282,7 @@ public class Planet : MonoBehaviour {
         try {
 
             foreach (Vector2Int chunkPos in this.chunksInView) {
-                Vector2Int normalizedChunkPos = HelperFunctions.GetNormalizedChunkPos(this, chunkPos.x, chunkPos.y);
+                Vector2Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y);
                 Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                 if (chunk.stage == ChunkStage.MeshCreated) {

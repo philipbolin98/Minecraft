@@ -63,6 +63,7 @@
     <Compile Include="Assets\Scripts\SimplexNoise.cs" />
     <Compile Include="Assets\Scripts\Player.cs" />
     <Compile Include="Assets\Scripts\Biome.cs" />
+    <Compile Include="Assets\Scripts\Structures.cs" />
     <Compile Include="Assets\Scripts\FastNoiseLite.cs" />
     <Compile Include="Assets\Scripts\SaveSystem.cs" />
     <Compile Include="Assets\Scripts\Data\VoxelData.cs" />
