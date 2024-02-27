@@ -15,6 +15,7 @@ public class Player : MonoBehaviour {
     private bool isGrounded;
     private bool isSprinting;
     private bool isCrouching;
+    private bool godMode;
     private Vector2Int currentChunk;
 
     private Transform cam;
@@ -36,6 +37,7 @@ public class Player : MonoBehaviour {
     private Vector3 currentPosition;
 
     private float verticalMomentum = 0;
+    private int ascentDirection = 0;
     private bool jumpRequest = false;
 
     private TextMeshProUGUI playerBlockCoordsUI;
@@ -70,9 +72,13 @@ public class Player : MonoBehaviour {
     private void FixedUpdate() {
         try {
 
-            CalculateVelocity();
-            if (jumpRequest) {
-                Jump();
+            if (godMode) {
+                Fly();
+            } else {
+                MovePlayer();
+                if (jumpRequest) {
+                    Jump();
+                }
             }
 
             transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotationY, transform.eulerAngles.z);
@@ -82,8 +88,8 @@ public class Player : MonoBehaviour {
 
             Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
 
-            if (newChunk.x != currentChunk.x || newChunk.y != currentChunk.y) {
-                currentChunk = newChunk;
+            if (newChunk.x != this.currentChunk.x || newChunk.y != this.currentChunk.y) {
+                this.currentChunk = newChunk;
                 this.planet.CheckRenderDistance(currentPosition);
             }
 
@@ -106,181 +112,80 @@ public class Player : MonoBehaviour {
         }
     }
 
-    private void UpdateDebugUI() {
+    /// <summary>
+    /// Gets the player inputs
+    /// </summary>
+    private void GetPlayerInputs() {
         try {
 
-            int halfPlanetSize = this.planet.PlanetSizeInVoxels / 2;
-            float x = HelperFunctions.Modulo(this.currentPosition.x, this.planet.PlanetSizeInVoxels);
-            float z = HelperFunctions.Modulo(this.currentPosition.z, this.planet.PlanetSizeInVoxels);
+            horizontal = Input.GetAxis("Horizontal"); //A and D keys
+            vertical = Input.GetAxis("Vertical"); //W and S keys
 
-            if (x >= halfPlanetSize) {
-                x -= this.planet.PlanetSizeInVoxels;
+            //Set rotation based on mouse movement
+            rotationY += Input.GetAxis("Mouse X") * mouseSensitivity;
+            rotationX -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+            rotationX = Mathf.Clamp(rotationX, -90f, 90f);
+
+            isSprinting = Input.GetButton("Sprint");
+            
+            //F2 to enable godmode for debugging purposes
+            if (Input.GetKeyDown(KeyCode.F2)) {
+                godMode = !godMode;
             }
 
-            if (z >= halfPlanetSize) {
-                z -= this.planet.PlanetSizeInVoxels;
-            }
+            if (godMode) {
 
-            Vector3 playerPos = new Vector3(x, this.currentPosition.y, z);
-            playerBlockCoordsUI.text = playerPos.ToString();
-
-            int chunkX = Mathf.FloorToInt(x / VoxelData.ChunkSize);
-            int chunkZ = Mathf.FloorToInt(z / VoxelData.ChunkSize);
-            Vector2Int chunkPos = new Vector2Int(chunkX, chunkZ);
-
-            playerChunkCoordsUI.text = chunkPos.ToString();
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player UpdateDebugUI: " + ex.Message);
-        }
-    }
-
-    private void PositionHighlightBlocks() {
-        try {
-
-            Vector3Int camPos = Vector3Int.FloorToInt(cam.position);
-
-            if (GetTargetedBlock(camPos)) {
-
-                if (breakHighlightBlock.transform.position != breakPos || !breakHighlightBlock.activeSelf) {
-                    breakHighlightBlock.transform.position = breakPos;
-                    breakHighlightBlock.SetActive(true);
-                }
-
-                if (CanPlayerPlaceBlock()) {
-
-                    if (placeHighlightBlock.transform.position != placePos || !placeHighlightBlock.activeSelf) {
-                        placeHighlightBlock.transform.position = placePos;
-                        placeHighlightBlock.SetActive(true);
-                    }
-
+                if (Input.GetButton("Jump")) {
+                    ascentDirection = 1;
+                } else if (Input.GetButton("Crouch")) {
+                    ascentDirection = -1;
                 } else {
-
-                    if (placeHighlightBlock.activeSelf) {
-                        placeHighlightBlock.SetActive(false);
-                    }
+                    ascentDirection = 0;
                 }
-                
+
+                isCrouching = false;
+                jumpRequest = false;
+
             } else {
 
-                if (breakHighlightBlock.activeSelf) {
-                    breakHighlightBlock.SetActive(false);
-                }
+                ascentDirection = 0;
+                isCrouching = Input.GetButton("Crouch");
 
-                if (placeHighlightBlock.activeSelf) {
-                    placeHighlightBlock.SetActive(false);
+                //Space to jump only if currently grounded
+                if (isGrounded && Input.GetButtonDown("Jump")) {
+                    jumpRequest = true;
                 }
+            }
+
+            //F1 to reload the game for debugging purposes
+            if (Input.GetKeyDown(KeyCode.F1)) {
+                SceneManager.LoadScene("SampleScene");
+            }
+
+            //On left click, break the block at the targeted location
+            if (Input.GetMouseButtonDown(0) && breakHighlightBlock.activeSelf) {
+                EditBlock(breakPos, BlockID.Air);
+                PositionHighlightBlocks();
+            }
+
+            //On right click, place a block at the targeted location
+            if (Input.GetMouseButtonDown(1) && placeHighlightBlock.activeSelf) {
+                EditBlock(placePos, BlockID.Stone);
+                PositionHighlightBlocks();
             }
 
         } catch (Exception ex) {
-            Debug.LogError("Error in Player PositionHighlightBlocks: " + ex.Message);
+            Debug.LogError("Error in Player.GetPlayerInputs: " + ex.Message);
         }
     }
 
-    private bool CanPlayerPlaceBlock() {
+    /// <summary>
+    /// Calculates the next position of the player based off velocity, gravity, etc.
+    /// </summary>
+    private void MovePlayer() {
         try {
 
-            float minX = Mathf.FloorToInt(currentPosition.x - playerRadius);
-            float maxX = Mathf.CeilToInt(currentPosition.x + playerRadius);
-            float minY = Mathf.FloorToInt(currentPosition.y);
-            float maxY = Mathf.CeilToInt(currentPosition.y + playerHeight);
-            float minZ = Mathf.FloorToInt(currentPosition.z - playerRadius);
-            float maxZ = Mathf.CeilToInt(currentPosition.z + playerRadius);
-
-            return placePos.x < minX || placePos.x >= maxX || placePos.y < minY || placePos.y >= maxY || placePos.z < minZ || placePos.z >= maxZ;
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player CanPlayerPlaceBlock: " + ex.Message);
-            return false;
-        }
-    }
-
-    private bool GetTargetedBlock(Vector3Int startBlockPos) {
-        try {
-
-            Vector3 startPos = cam.position;
-            Vector3 endPos = startPos + cam.forward.normalized * reach;
-            Vector3Int blockPos = Vector3Int.zero;
-
-            bool hit = false;
-
-            if (cam.forward.x > 0) {
-                blockPos = startBlockPos + Vector3Int.right;
-                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
-            } else if (cam.forward.x < 0) {
-                blockPos = startBlockPos + Vector3Int.left;
-                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
-            }
-
-            if (hit) {
-                if (HelperFunctions.CheckBlockInPlanet(this.planet, blockPos.x, blockPos.y, blockPos.z)) {
-                    breakPos = blockPos;
-                    placePos = startBlockPos;
-                    return true;
-                } else {
-                    return GetTargetedBlock(blockPos);
-                }
-            }
-
-            if (cam.forward.y > 0) {
-                blockPos = startBlockPos + Vector3Int.up;
-                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
-            } else if (cam.forward.y < 0) {
-                blockPos = startBlockPos + Vector3Int.down;
-                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
-            }
-
-            if (hit) {
-                if (HelperFunctions.CheckBlockInPlanet(this.planet, blockPos.x, blockPos.y, blockPos.z)) {
-                    breakPos = blockPos;
-                    placePos = startBlockPos;
-                    return true;
-                } else {
-                    return GetTargetedBlock(blockPos);
-                }
-            }
-
-            if (cam.forward.z > 0) {
-                blockPos = startBlockPos + Vector3Int.forward;
-                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
-            } else if (cam.forward.z < 0) {
-                blockPos = startBlockPos + Vector3Int.back;
-                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
-            }
-
-            if (hit) {
-                if (HelperFunctions.CheckBlockInPlanet(this.planet, blockPos.x, blockPos.y, blockPos.z)) {
-                    breakPos = blockPos;
-                    placePos = startBlockPos;
-                    return true;
-                } else {
-                    return GetTargetedBlock(blockPos);
-                }
-            }
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player GetTargetedBlock: " + ex.Message);
-        }
-
-        return false;
-    }
-
-    void Jump() {
-        try {
-
-            verticalMomentum = jumpForce;
-            isGrounded = false;
-            jumpRequest = false;
-
-        } catch (Exception e) {
-            Debug.LogError("Error in function Player.Jump: " + e.Message);
-        }
-    }
-
-    private void CalculateVelocity() {
-        try {
-
-            //Affect vertical momentum with velocity
+            //Apply gravity to vertical momentum
             if (verticalMomentum > this.planet.gravity) {
                 verticalMomentum += Time.fixedDeltaTime * this.planet.gravity;
             }
@@ -305,7 +210,7 @@ public class Player : MonoBehaviour {
             Vector3 nextPosition = this.currentPosition;
 
             if (velocity.y < 0) {
-                if (CheckTopOrBottom(nextPosition, VoxelData.BlockFace.Bottom)) {
+                if (CheckSide(nextPosition, VoxelData.BlockFace.Bottom)) {
                     nextPosition.y = Mathf.CeilToInt(nextPosition.y + velocity.y);
                     velocity.y = 0;
                     isGrounded = true;
@@ -314,7 +219,7 @@ public class Player : MonoBehaviour {
                     isGrounded = false;
                 }
             } else if (velocity.y > 0) {
-                if (CheckTopOrBottom(nextPosition, VoxelData.BlockFace.Top)) {
+                if (CheckSide(nextPosition, VoxelData.BlockFace.Top)) {
                     nextPosition.y = Mathf.FloorToInt(nextPosition.y + velocity.y + playerHeight) - playerHeight;
                     velocity.y = 0;
                     verticalMomentum = 0;
@@ -357,60 +262,314 @@ public class Player : MonoBehaviour {
 
             this.currentPosition = nextPosition;
 
-        } catch (Exception e) {
-            Debug.LogError("Error in function Player.CalculateVelocity: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player.MovePlayer: " + ex.Message);
         }
     }
 
-    private void GetPlayerInputs() {
+    private void Fly() {
         try {
 
-            horizontal = Input.GetAxis("Horizontal");
-            vertical = Input.GetAxis("Vertical");
+            float speedModifier = (isSprinting ? sprintSpeed : walkSpeed) * 3;
+            velocity = speedModifier * Time.deltaTime * ((transform.forward * vertical) + (transform.right * horizontal));
 
-            rotationY += Input.GetAxis("Mouse X") * mouseSensitivity;
-            rotationX -= Input.GetAxis("Mouse Y") * mouseSensitivity;
-            rotationX = Mathf.Clamp(rotationX, -90f, 90f);
+            float ascent = ascentDirection * speedModifier * Time.deltaTime;
 
-            if (Input.GetButtonDown("Crouch")) {
-                isCrouching = true;
+            Vector3 nextPosition = currentPosition;
+            nextPosition.x += velocity.x;
+            nextPosition.z += velocity.z;
+            nextPosition.y += ascent;
+
+            this.currentPosition = nextPosition;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player.Fly: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Checks if there are any blocks on a given side of the player that impedes his movement in that direction
+    /// </summary>
+    /// <param name="pos">The player's position</param>
+    /// <param name="side">The side to check</param>
+    /// <returns>True if the player is running into a block, false otherwise</returns>
+    private bool CheckSide(Vector3 pos, VoxelData.BlockFace side) {
+        try {
+            
+            int minX, maxX, minY, maxY, minZ, maxZ;
+
+            switch (side) {
+                case VoxelData.BlockFace.Right:
+                    minX = Mathf.FloorToInt(pos.x + velocity.x + playerRadius);
+                    maxX = minX + 1;
+                    minY = Mathf.FloorToInt(currentPosition.y);
+                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
+                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
+                    break;
+                case VoxelData.BlockFace.Left:
+                    minX = Mathf.FloorToInt(pos.x + velocity.x - playerRadius);
+                    maxX = minX + 1;
+                    minY = Mathf.FloorToInt(currentPosition.y);
+                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
+                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
+                    break;
+                case VoxelData.BlockFace.Front:
+                    minX = Mathf.FloorToInt(pos.x - playerRadius);
+                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
+                    minY = Mathf.FloorToInt(currentPosition.y);
+                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minZ = Mathf.FloorToInt(pos.z + velocity.z + playerRadius);
+                    maxZ = minZ + 1;
+                    break;
+                case VoxelData.BlockFace.Back:
+                    minX = Mathf.FloorToInt(pos.x - playerRadius);
+                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
+                    minY = Mathf.FloorToInt(currentPosition.y);
+                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minZ = Mathf.FloorToInt(pos.z + velocity.z - playerRadius);
+                    maxZ = minZ + 1;
+                    break;
+                case VoxelData.BlockFace.Top:
+                    minX = Mathf.FloorToInt(pos.x - playerRadius);
+                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
+                    minY = Mathf.FloorToInt(pos.y + velocity.y + playerHeight);
+                    maxY = minY + 1;
+                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
+                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
+                    break;
+                case VoxelData.BlockFace.Bottom:
+                    minX = Mathf.FloorToInt(pos.x - playerRadius);
+                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
+                    minY = Mathf.FloorToInt(pos.y + velocity.y);
+                    maxY = minY + 1;
+                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
+                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
+                    break;
+                default:
+                    return false;
             }
 
-            if (Input.GetButtonUp("Crouch")) {
-                isCrouching = false;
-            }
-
-            if (Input.GetButtonDown("Sprint")) {
-                isSprinting = true;
-            }
-
-            if (Input.GetButtonUp("Sprint")) {
-                isSprinting = false;
-            }
-
-            if (isGrounded && Input.GetButtonDown("Jump")) {
-                jumpRequest = true;
-            }
-
-            if (Input.GetKeyDown(KeyCode.F1)) {
-                SceneManager.LoadScene("SampleScene");
-            }
-
-            if (Input.GetMouseButtonDown(0) && breakHighlightBlock.activeSelf) {
-                EditBlock(breakPos, BlockID.Air);
-                PositionHighlightBlocks();
-            }
-
-            if (Input.GetMouseButtonDown(1) && placeHighlightBlock.activeSelf) {
-                EditBlock(placePos, BlockID.Stone);
-                PositionHighlightBlocks();
+            for (int x = minX; x < maxX; x++) {
+                for (int z = minZ; z < maxZ; z++) {
+                    for (int y = minY; y < maxY; y++) {
+                        if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
+                            return true;
+                        }
+                    }
+                }
             }
 
         } catch (Exception ex) {
-            Debug.LogError("Error in function Player.GetPlayerInputs: " + ex.Message);
+            Debug.LogError("Error in Player CheckSide: " + ex.Message);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Sets the variables required to signal a jump
+    /// </summary>
+    void Jump() {
+        try {
+
+            verticalMomentum = jumpForce;
+            isGrounded = false;
+            jumpRequest = false;
+
+        } catch (Exception e) {
+            Debug.LogError("Error in function Player.Jump: " + e.Message);
         }
     }
 
+    /// <summary>
+    /// Updates the debug UI
+    /// </summary>
+    private void UpdateDebugUI() {
+        try {
+
+            int halfPlanetSize = this.planet.PlanetSizeInVoxels / 2;
+            float x = HelperFunctions.Modulo(this.currentPosition.x, this.planet.PlanetSizeInVoxels);
+            float z = HelperFunctions.Modulo(this.currentPosition.z, this.planet.PlanetSizeInVoxels);
+
+            if (x >= halfPlanetSize) {
+                x -= this.planet.PlanetSizeInVoxels;
+            }
+
+            if (z >= halfPlanetSize) {
+                z -= this.planet.PlanetSizeInVoxels;
+            }
+
+            Vector3 playerPos = new Vector3(x, this.currentPosition.y, z);
+            playerBlockCoordsUI.text = playerPos.ToString();
+
+            int chunkX = Mathf.FloorToInt(x / VoxelData.ChunkSize);
+            int chunkZ = Mathf.FloorToInt(z / VoxelData.ChunkSize);
+            Vector2Int chunkPos = new Vector2Int(chunkX, chunkZ);
+
+            playerChunkCoordsUI.text = chunkPos.ToString();
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player UpdateDebugUI: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Places and enables/disables the highlight blocks
+    /// </summary>
+    private void PositionHighlightBlocks() {
+        try {
+
+            Vector3Int camPos = Vector3Int.FloorToInt(cam.position);
+
+            if (GetTargetedBlock(camPos)) {
+
+                if (breakHighlightBlock.transform.position != breakPos || !breakHighlightBlock.activeSelf) {
+                    breakHighlightBlock.transform.position = breakPos;
+                    breakHighlightBlock.SetActive(true);
+                }
+
+                if (CanPlayerPlaceBlock()) {
+
+                    if (placeHighlightBlock.transform.position != placePos || !placeHighlightBlock.activeSelf) {
+                        placeHighlightBlock.transform.position = placePos;
+                        placeHighlightBlock.SetActive(true);
+                    }
+
+                } else {
+
+                    if (placeHighlightBlock.activeSelf) {
+                        placeHighlightBlock.SetActive(false);
+                    }
+                }
+                
+            } else {
+
+                if (breakHighlightBlock.activeSelf) {
+                    breakHighlightBlock.SetActive(false);
+                }
+
+                if (placeHighlightBlock.activeSelf) {
+                    placeHighlightBlock.SetActive(false);
+                }
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player PositionHighlightBlocks: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Checks if the player is standing where the placeHighlightBlock should be placed and therefore cannot place a block 
+    /// </summary>
+    /// <returns>True if the player can place a block, false otherwise</returns>
+    private bool CanPlayerPlaceBlock() {
+        try {
+
+            float minX = Mathf.FloorToInt(currentPosition.x - playerRadius);
+            float maxX = Mathf.CeilToInt(currentPosition.x + playerRadius);
+            float minY = Mathf.FloorToInt(currentPosition.y);
+            float maxY = Mathf.CeilToInt(currentPosition.y + playerHeight);
+            float minZ = Mathf.FloorToInt(currentPosition.z - playerRadius);
+            float maxZ = Mathf.CeilToInt(currentPosition.z + playerRadius);
+
+            return placePos.x < minX || placePos.x >= maxX || placePos.y < minY || placePos.y >= maxY || placePos.z < minZ || placePos.z >= maxZ;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player CanPlayerPlaceBlock: " + ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Determines if the player camera is aiming at a block that is within reach
+    /// </summary>
+    /// <param name="startBlockPos">The starting block position</param>
+    /// <returns>True if a solid block within reach was targeted, false otherwise</returns>
+    private bool GetTargetedBlock(Vector3Int startBlockPos) {
+        try {
+
+            Vector3 startPos = cam.position;
+            Vector3 endPos = startPos + cam.forward.normalized * reach;
+            Vector3Int blockPos = Vector3Int.zero;
+
+            bool hit = false;
+
+            //Check the neighbors of the starting block on the x axis
+            if (cam.forward.x > 0) {
+                blockPos = startBlockPos + Vector3Int.right;
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
+            } else if (cam.forward.x < 0) {
+                blockPos = startBlockPos + Vector3Int.left;
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
+            }
+
+            if (hit) {
+                //If a solid block was targeted, store its position and return true
+                if (HelperFunctions.CheckBlockInPlanet(this.planet, blockPos.x, blockPos.y, blockPos.z)) {
+                    breakPos = blockPos;
+                    placePos = startBlockPos;
+                    return true;
+                } else { //The block was not solid, recurse with the block position as the new starting point
+                    return GetTargetedBlock(blockPos);
+                }
+            }
+
+            //Check the neighbors of the starting block on the y axis
+            if (cam.forward.y > 0) {
+                blockPos = startBlockPos + Vector3Int.up;
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
+            } else if (cam.forward.y < 0) {
+                blockPos = startBlockPos + Vector3Int.down;
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
+            }
+
+            if (hit) {
+                //If a solid block was targeted, store its position and return true
+                if (HelperFunctions.CheckBlockInPlanet(this.planet, blockPos.x, blockPos.y, blockPos.z)) {
+                    breakPos = blockPos;
+                    placePos = startBlockPos;
+                    return true;
+                } else { //The block was not solid, recurse with the block position as the new starting point
+                    return GetTargetedBlock(blockPos);
+                }
+            }
+
+            //Check the neighbors of the starting block on the z axis
+            if (cam.forward.z > 0) {
+                blockPos = startBlockPos + Vector3Int.forward;
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
+            } else if (cam.forward.z < 0) {
+                blockPos = startBlockPos + Vector3Int.back;
+                hit = HelperFunctions.LiangBarsky3D(startPos, endPos, blockPos);
+            }
+
+            if (hit) {
+                //If a solid block was targeted, store its position and return true
+                if (HelperFunctions.CheckBlockInPlanet(this.planet, blockPos.x, blockPos.y, blockPos.z)) {
+                    breakPos = blockPos;
+                    placePos = startBlockPos;
+                    return true;
+                } else { //The block was not solid, recurse with the block position as the new starting point
+                    return GetTargetedBlock(blockPos);
+                }
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Player GetTargetedBlock: " + ex.Message);
+        }
+
+        //The starting block has no neighboring block that was hit
+        //This means that the entirety of the player reach has been checked without hitting a solid block, so return false
+        return false;
+    }
+
+    /// <summary>
+    /// Changes the ID of a block at a given xyz coord
+    /// </summary>
+    /// <param name="blockPosInPlanet">The position of the block in the planet</param>
+    /// <param name="blockID">The new ID of the block</param>
     private void EditBlock(Vector3Int blockPosInPlanet, BlockID blockID) {
         try {
 
@@ -439,6 +598,10 @@ public class Player : MonoBehaviour {
         }
     }
 
+    /// <summary>
+    /// Regenerates a chunk mesh when a block is placed or destroyed by a player
+    /// </summary>
+    /// <param name="chunkPos">The position of the chunk being edited</param>
     private void RegenerateMesh(Vector2Int chunkPos) {
         try {
 
@@ -455,82 +618,5 @@ public class Player : MonoBehaviour {
         } catch (Exception ex) {
             Debug.LogError("Error in Player PrepareChunkForEditing: " + ex.Message);
         }
-    }
-
-    private bool CheckTopOrBottom(Vector3 pos, VoxelData.BlockFace side) {
-        try {
-
-            int y = Mathf.FloorToInt(pos.y + velocity.y + (side == VoxelData.BlockFace.Top ? playerHeight : 0));
-            int minX = Mathf.FloorToInt(pos.x - playerRadius);
-            int maxX = Mathf.CeilToInt(pos.x + playerRadius);
-            int minZ = Mathf.FloorToInt(pos.z - playerRadius);
-            int maxZ = Mathf.CeilToInt(pos.z + playerRadius);
-
-            for (int x = minX; x < maxX; x++) {
-                for (int z = minZ; z < maxZ; z++) {
-                    if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
-                        return true;
-                    }
-                }
-            }
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player CheckBottom: " + ex.Message);
-        }
-
-        return false;
-    }
-
-    private bool CheckSide(Vector3 pos, VoxelData.BlockFace side) {
-        try {
-
-            int minY = Mathf.FloorToInt(currentPosition.y);
-            int maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1);
-            int minX, minZ, maxX, maxZ;
-
-            switch (side) {
-                case VoxelData.BlockFace.Right:
-                    minX = Mathf.FloorToInt(pos.x + velocity.x + playerRadius);
-                    maxX = minX + 1;
-                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
-                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
-                    break;
-                case VoxelData.BlockFace.Left:
-                    minX = Mathf.FloorToInt(pos.x + velocity.x - playerRadius);
-                    maxX = minX + 1;
-                    minZ = Mathf.FloorToInt(pos.z - playerRadius);
-                    maxZ = Mathf.CeilToInt(pos.z + playerRadius);
-                    break;
-                case VoxelData.BlockFace.Front:
-                    minX = Mathf.FloorToInt(pos.x - playerRadius);
-                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
-                    minZ = Mathf.FloorToInt(pos.z + velocity.z + playerRadius);
-                    maxZ = minZ + 1;
-                    break;
-                case VoxelData.BlockFace.Back:
-                    minX = Mathf.FloorToInt(pos.x - playerRadius);
-                    maxX = Mathf.CeilToInt(pos.x + playerRadius);
-                    minZ = Mathf.FloorToInt(pos.z + velocity.z - playerRadius);
-                    maxZ = minZ + 1;
-                    break;
-                default:
-                    return false;
-            }
-
-            for (int x = minX; x < maxX; x++) {
-                for (int z = minZ; z < maxZ; z++) {
-                    for (int y = minY; y <= maxY; y++) {
-                        if (HelperFunctions.CheckBlockInPlanet(planet, x, y, z)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Player CheckSide: " + ex.Message);
-        }
-
-        return false;
     }
 }
