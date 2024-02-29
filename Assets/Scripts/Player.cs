@@ -60,7 +60,7 @@ public class Player : MonoBehaviour {
             breakHighlightBlock = GameObject.Find("HighlightBlock");
             placeHighlightBlock = GameObject.Find("PlaceBlock");
 
-            inventory = new Inventory();
+            inventory = new Inventory(planet);
 
             currentPosition = transform.position;
             currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
@@ -173,7 +173,8 @@ public class Player : MonoBehaviour {
 
             //On right click, place a block at the targeted location
             if (Input.GetMouseButtonDown(1) && placeHighlightBlock.activeSelf) {
-                EditBlock(placePos, BlockID.Stone);
+                BlockID blockInHand = inventory.items[inventory.slotIndex];
+                EditBlock(placePos, blockInHand);
                 PositionHighlightBlocks();
             }
 
@@ -475,6 +476,12 @@ public class Player : MonoBehaviour {
     /// <returns>True if the player can place a block, false otherwise</returns>
     private bool CanPlayerPlaceBlock() {
         try {
+
+            BlockID blockInHand = inventory.items[inventory.slotIndex];
+
+            if (blockInHand == BlockID.Air) {
+                return false;
+            }
 
             float minX = Mathf.FloorToInt(currentPosition.x - playerRadius);
             float maxX = Mathf.CeilToInt(currentPosition.x + playerRadius);

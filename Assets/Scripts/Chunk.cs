@@ -234,7 +234,7 @@ public class Chunk {
                 vertices.Add(vertex);
             }
 
-            Block block = this.planet.blockTypes[(byte)blockID];
+            Block block = this.planet.blockTypes[(int)blockID];
             int textureID = block.GetTextureID(face);
 
             float y = textureID / Block.TextureAtlasSizeInBlocks;

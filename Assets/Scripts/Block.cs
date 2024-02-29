@@ -59,6 +59,7 @@ public class Block {
 
     public string blockName;
     public bool isSolid;
+    public Sprite icon;
 
     [Header("Texture Values")]
     public int rightFaceTexture;

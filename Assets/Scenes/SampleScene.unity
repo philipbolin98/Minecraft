@@ -789,6 +789,7 @@ MonoBehaviour:
   blockTypes:
   - blockName: Air
     isSolid: 0
+    icon: {fileID: 0}
     rightFaceTexture: 0
     topFaceTexture: 0
     frontFaceTexture: 0
@@ -797,6 +798,7 @@ MonoBehaviour:
     backFaceTexture: 0
   - blockName: Bedrock
     isSolid: 1
+    icon: {fileID: 1460811140, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 4
     topFaceTexture: 4
     frontFaceTexture: 4
@@ -805,6 +807,7 @@ MonoBehaviour:
     backFaceTexture: 4
   - blockName: Stone
     isSolid: 1
+    icon: {fileID: 1209869727, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 3
     topFaceTexture: 3
     frontFaceTexture: 3
@@ -813,6 +816,7 @@ MonoBehaviour:
     backFaceTexture: 3
   - blockName: Grass
     isSolid: 1
+    icon: {fileID: -1913951231, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 1
     topFaceTexture: 0
     frontFaceTexture: 1
@@ -821,6 +825,7 @@ MonoBehaviour:
     backFaceTexture: 1
   - blockName: Dirt
     isSolid: 1
+    icon: {fileID: -628285315, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 2
     topFaceTexture: 2
     frontFaceTexture: 2
@@ -829,6 +834,7 @@ MonoBehaviour:
     backFaceTexture: 2
   - blockName: Water
     isSolid: 0
+    icon: {fileID: -1444940953, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 5
     topFaceTexture: 5
     frontFaceTexture: 5
@@ -837,6 +843,7 @@ MonoBehaviour:
     backFaceTexture: 5
   - blockName: Sand
     isSolid: 1
+    icon: {fileID: -1277889711, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 6
     topFaceTexture: 6
     frontFaceTexture: 6
@@ -845,6 +852,7 @@ MonoBehaviour:
     backFaceTexture: 6
   - blockName: Wood
     isSolid: 1
+    icon: {fileID: -58497366, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 7
     topFaceTexture: 8
     frontFaceTexture: 7
@@ -853,6 +861,7 @@ MonoBehaviour:
     backFaceTexture: 7
   - blockName: Leaf
     isSolid: 1
+    icon: {fileID: 1764138015, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 9
     topFaceTexture: 9
     frontFaceTexture: 9
