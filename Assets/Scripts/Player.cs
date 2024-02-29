@@ -1,6 +1,5 @@
 using System;
 using TMPro;
-using UnityEditor.U2D;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -12,10 +11,12 @@ public class Player : MonoBehaviour {
     public float jumpForce;
     public float reach;
 
+    private Inventory inventory;
+
     private bool isGrounded;
     private bool isSprinting;
     private bool isCrouching;
-    private bool godMode;
+    private bool spectatorMode;
     private Vector2Int currentChunk;
 
     private Transform cam;
@@ -59,6 +60,8 @@ public class Player : MonoBehaviour {
             breakHighlightBlock = GameObject.Find("HighlightBlock");
             placeHighlightBlock = GameObject.Find("PlaceBlock");
 
+            inventory = new Inventory();
+
             currentPosition = transform.position;
             currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
 
@@ -72,7 +75,7 @@ public class Player : MonoBehaviour {
     private void FixedUpdate() {
         try {
 
-            if (godMode) {
+            if (spectatorMode) {
                 Fly();
             } else {
                 MovePlayer();
@@ -127,13 +130,13 @@ public class Player : MonoBehaviour {
             rotationX = Mathf.Clamp(rotationX, -90f, 90f);
 
             isSprinting = Input.GetButton("Sprint");
-            
-            //F2 to enable godmode for debugging purposes
+
+            //F2 to enable spectator mode for debugging purposes
             if (Input.GetKeyDown(KeyCode.F2)) {
-                godMode = !godMode;
+                spectatorMode = !spectatorMode;
             }
 
-            if (godMode) {
+            if (spectatorMode) {
 
                 if (Input.GetButton("Jump")) {
                     ascentDirection = 1;
@@ -174,6 +177,12 @@ public class Player : MonoBehaviour {
                 PositionHighlightBlocks();
             }
 
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+
+            if (scroll != 0) {
+                inventory.ChangeActiveSlot(scroll);
+            }
+
         } catch (Exception ex) {
             Debug.LogError("Error in Player.GetPlayerInputs: " + ex.Message);
         }
@@ -210,7 +219,7 @@ public class Player : MonoBehaviour {
             Vector3 nextPosition = this.currentPosition;
 
             if (velocity.y < 0) {
-                if (CheckSide(nextPosition, VoxelData.BlockFace.Bottom)) {
+                if (CheckSide(nextPosition, Block.BlockFace.Bottom)) {
                     nextPosition.y = Mathf.CeilToInt(nextPosition.y + velocity.y);
                     velocity.y = 0;
                     isGrounded = true;
@@ -219,7 +228,7 @@ public class Player : MonoBehaviour {
                     isGrounded = false;
                 }
             } else if (velocity.y > 0) {
-                if (CheckSide(nextPosition, VoxelData.BlockFace.Top)) {
+                if (CheckSide(nextPosition, Block.BlockFace.Top)) {
                     nextPosition.y = Mathf.FloorToInt(nextPosition.y + velocity.y + playerHeight) - playerHeight;
                     velocity.y = 0;
                     verticalMomentum = 0;
@@ -229,14 +238,14 @@ public class Player : MonoBehaviour {
             }
 
             if (velocity.x > 0) {
-                if (CheckSide(nextPosition, VoxelData.BlockFace.Right)) {
+                if (CheckSide(nextPosition, Block.BlockFace.Right)) {
                     nextPosition.x = Mathf.FloorToInt(nextPosition.x + velocity.x + playerRadius) - playerRadius;
                     velocity.x = 0;
                 } else {
                     nextPosition.x += velocity.x;
                 }
             } else if (velocity.x < 0) {
-                if (CheckSide(nextPosition, VoxelData.BlockFace.Left)) {
+                if (CheckSide(nextPosition, Block.BlockFace.Left)) {
                     nextPosition.x = Mathf.CeilToInt(nextPosition.x + velocity.x - playerRadius) + playerRadius;
                     velocity.x = 0;
                 } else {
@@ -245,14 +254,14 @@ public class Player : MonoBehaviour {
             }
 
             if (velocity.z > 0) {
-                if (CheckSide(nextPosition, VoxelData.BlockFace.Front)) {
+                if (CheckSide(nextPosition, Block.BlockFace.Front)) {
                     nextPosition.z = Mathf.FloorToInt(nextPosition.z + velocity.z + playerRadius) - playerRadius;
                     velocity.z = 0;
                 } else {
                     nextPosition.z += velocity.z;
                 }
             } else if (velocity.z < 0) {
-                if (CheckSide(nextPosition, VoxelData.BlockFace.Back)) {
+                if (CheckSide(nextPosition, Block.BlockFace.Back)) {
                     nextPosition.z = Mathf.CeilToInt(nextPosition.z + velocity.z - playerRadius) + playerRadius;
                     velocity.z = 0;
                 } else {
@@ -293,13 +302,13 @@ public class Player : MonoBehaviour {
     /// <param name="pos">The player's position</param>
     /// <param name="side">The side to check</param>
     /// <returns>True if the player is running into a block, false otherwise</returns>
-    private bool CheckSide(Vector3 pos, VoxelData.BlockFace side) {
+    private bool CheckSide(Vector3 pos, Block.BlockFace side) {
         try {
             
             int minX, maxX, minY, maxY, minZ, maxZ;
 
             switch (side) {
-                case VoxelData.BlockFace.Right:
+                case Block.BlockFace.Right:
                     minX = Mathf.FloorToInt(pos.x + velocity.x + playerRadius);
                     maxX = minX + 1;
                     minY = Mathf.FloorToInt(currentPosition.y);
@@ -307,7 +316,7 @@ public class Player : MonoBehaviour {
                     minZ = Mathf.FloorToInt(pos.z - playerRadius);
                     maxZ = Mathf.CeilToInt(pos.z + playerRadius);
                     break;
-                case VoxelData.BlockFace.Left:
+                case Block.BlockFace.Left:
                     minX = Mathf.FloorToInt(pos.x + velocity.x - playerRadius);
                     maxX = minX + 1;
                     minY = Mathf.FloorToInt(currentPosition.y);
@@ -315,7 +324,7 @@ public class Player : MonoBehaviour {
                     minZ = Mathf.FloorToInt(pos.z - playerRadius);
                     maxZ = Mathf.CeilToInt(pos.z + playerRadius);
                     break;
-                case VoxelData.BlockFace.Front:
+                case Block.BlockFace.Front:
                     minX = Mathf.FloorToInt(pos.x - playerRadius);
                     maxX = Mathf.CeilToInt(pos.x + playerRadius);
                     minY = Mathf.FloorToInt(currentPosition.y);
@@ -323,7 +332,7 @@ public class Player : MonoBehaviour {
                     minZ = Mathf.FloorToInt(pos.z + velocity.z + playerRadius);
                     maxZ = minZ + 1;
                     break;
-                case VoxelData.BlockFace.Back:
+                case Block.BlockFace.Back:
                     minX = Mathf.FloorToInt(pos.x - playerRadius);
                     maxX = Mathf.CeilToInt(pos.x + playerRadius);
                     minY = Mathf.FloorToInt(currentPosition.y);
@@ -331,7 +340,7 @@ public class Player : MonoBehaviour {
                     minZ = Mathf.FloorToInt(pos.z + velocity.z - playerRadius);
                     maxZ = minZ + 1;
                     break;
-                case VoxelData.BlockFace.Top:
+                case Block.BlockFace.Top:
                     minX = Mathf.FloorToInt(pos.x - playerRadius);
                     maxX = Mathf.CeilToInt(pos.x + playerRadius);
                     minY = Mathf.FloorToInt(pos.y + velocity.y + playerHeight);
@@ -339,7 +348,7 @@ public class Player : MonoBehaviour {
                     minZ = Mathf.FloorToInt(pos.z - playerRadius);
                     maxZ = Mathf.CeilToInt(pos.z + playerRadius);
                     break;
-                case VoxelData.BlockFace.Bottom:
+                case Block.BlockFace.Bottom:
                     minX = Mathf.FloorToInt(pos.x - playerRadius);
                     maxX = Mathf.CeilToInt(pos.x + playerRadius);
                     minY = Mathf.FloorToInt(pos.y + velocity.y);
@@ -404,8 +413,8 @@ public class Player : MonoBehaviour {
             Vector3 playerPos = new Vector3(x, this.currentPosition.y, z);
             playerBlockCoordsUI.text = playerPos.ToString();
 
-            int chunkX = Mathf.FloorToInt(x / VoxelData.ChunkSize);
-            int chunkZ = Mathf.FloorToInt(z / VoxelData.ChunkSize);
+            int chunkX = Mathf.FloorToInt(x / Chunk.ChunkSize);
+            int chunkZ = Mathf.FloorToInt(z / Chunk.ChunkSize);
             Vector2Int chunkPos = new Vector2Int(chunkX, chunkZ);
 
             playerChunkCoordsUI.text = chunkPos.ToString();
@@ -579,7 +588,7 @@ public class Player : MonoBehaviour {
                 return;
             }
 
-            Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, VoxelData.ChunkSize);
+            Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, Chunk.ChunkSize);
 
             chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
 

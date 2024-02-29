@@ -46,7 +46,7 @@ public class Planet : MonoBehaviour {
     private void Start() {
         try {
 
-            this.PlanetSizeInVoxels = PlanetSizeInChunks * VoxelData.ChunkSize;
+            this.PlanetSizeInVoxels = PlanetSizeInChunks * Chunk.ChunkSize;
 
             this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
 
@@ -333,65 +333,4 @@ public class ChunkComparer : IComparer<Vector2Int> {
             }
         }
     }
-}
-
-[Serializable]
-public class Block {
-
-    public string blockName;
-    public bool isSolid;
-
-    [Header("Texture Values")]
-    public int rightFaceTexture;
-    public int topFaceTexture;
-    public int frontFaceTexture;
-    public int leftFaceTexture;
-    public int bottomFaceTexture;
-    public int backFaceTexture;
-
-    public int GetTextureID(int faceIndex) {
-
-        int index = 0;
-        
-        try {
-
-            switch (faceIndex) {
-                case 0:
-                    index = this.rightFaceTexture;
-                    break;
-                case 1:
-                    index = this.topFaceTexture;
-                    break;
-                case 2:
-                    index = this.frontFaceTexture;
-                    break;
-                case 3:
-                    index = this.leftFaceTexture;
-                    break;
-                case 4:
-                    index = this.bottomFaceTexture;
-                    break;
-                case 5:
-                    index = this.backFaceTexture;
-                    break;
-            }
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Block GetTextureID: " + ex.Message);
-        }
-
-        return index;
-    }
-}
-
-public enum BlockID {
-    Air = 0,
-    Bedrock = 1,
-    Stone = 2,
-    Grass = 3,
-    Dirt = 4,
-    Water = 5,
-    Sand = 6,
-    Wood = 7,
-    Leaf = 8
 }

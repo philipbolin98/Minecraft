@@ -197,8 +197,8 @@ public class TerrainGenerator : MonoBehaviour {
                             int x = j;
                             int z = k;
 
-                            if (x >= VoxelData.ChunkSize) {
-                                x = Mathf.FloorToInt(HelperFunctions.Modulo(x, VoxelData.ChunkSize));
+                            if (x >= Chunk.ChunkSize) {
+                                x = Mathf.FloorToInt(HelperFunctions.Modulo(x, Chunk.ChunkSize));
                                 chunkPos.x++;
 
                                 if (chunkPos.x == chunk.planet.PlanetSizeInChunks) {
@@ -206,7 +206,7 @@ public class TerrainGenerator : MonoBehaviour {
                                 }
 
                             } else if (x < 0) {
-                                x = Mathf.FloorToInt(HelperFunctions.Modulo(x, VoxelData.ChunkSize));
+                                x = Mathf.FloorToInt(HelperFunctions.Modulo(x, Chunk.ChunkSize));
                                 chunkPos.x--;
 
                                 if (chunkPos.x == -1) {
@@ -214,8 +214,8 @@ public class TerrainGenerator : MonoBehaviour {
                                 }
                             }
 
-                            if (z >= VoxelData.ChunkSize) {
-                                z = Mathf.FloorToInt(HelperFunctions.Modulo(z, VoxelData.ChunkSize));
+                            if (z >= Chunk.ChunkSize) {
+                                z = Mathf.FloorToInt(HelperFunctions.Modulo(z, Chunk.ChunkSize));
                                 chunkPos.y++;
 
                                 if (chunkPos.y == chunk.planet.PlanetSizeInChunks) {
@@ -223,7 +223,7 @@ public class TerrainGenerator : MonoBehaviour {
                                 }
 
                             } else if (z < 0) {
-                                z = Mathf.FloorToInt(HelperFunctions.Modulo(z, VoxelData.ChunkSize));
+                                z = Mathf.FloorToInt(HelperFunctions.Modulo(z, Chunk.ChunkSize));
                                 chunkPos.y--;
 
                                 if (chunkPos.y == -1) {

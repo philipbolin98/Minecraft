@@ -64,8 +64,9 @@
     <Compile Include="Assets\Scripts\Biome.cs" />
     <Compile Include="Assets\Scripts\Structures.cs" />
     <Compile Include="Assets\Scripts\FastNoiseLite.cs" />
+    <Compile Include="Assets\Scripts\Inventory.cs" />
     <Compile Include="Assets\Scripts\SaveSystem.cs" />
-    <Compile Include="Assets\Scripts\Data\VoxelData.cs" />
+    <Compile Include="Assets\Scripts\Block.cs" />
     <Compile Include="Assets\Scripts\HelperFunctions.cs" />
     <Compile Include="Assets\Scripts\Planet.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />

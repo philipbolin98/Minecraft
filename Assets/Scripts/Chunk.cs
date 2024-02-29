@@ -5,6 +5,8 @@ using UnityEngine.XR;
 
 public class Chunk {
 
+    public static readonly int ChunkSize = 16;
+
     public static readonly Vector2Int[] NeighboringChunks = new Vector2Int[8]{
         new Vector2Int(-1, 1),
         new Vector2Int(0, 1),
@@ -46,7 +48,7 @@ public class Chunk {
         try {
 
             this.pos = pos;
-            this.posInBlocks = pos * VoxelData.ChunkSize;
+            this.posInBlocks = pos * ChunkSize;
             this.planet = planet;
             this.data = new ChunkData(planet);
             planet.chunks[pos.x, pos.y] = this;
@@ -62,8 +64,8 @@ public class Chunk {
     public void Popuplate() {
         try {
 
-            for (int x = 0; x < VoxelData.ChunkSize; x++) {
-                for (int z = 0; z < VoxelData.ChunkSize; z++) {
+            for (int x = 0; x < ChunkSize; x++) {
+                for (int z = 0; z < ChunkSize; z++) {
                     this.planet.terrainGenerator.GenerateTerrain(this, x, z);
                 }
             }
@@ -115,8 +117,8 @@ public class Chunk {
             ClearMeshData();
 
             for (int y = 0; y < this.planet.WorldHeight; y++) {
-                for (int x = 0; x < VoxelData.ChunkSize; x++) {
-                    for (int z = 0; z < VoxelData.ChunkSize; z++) {
+                for (int x = 0; x < ChunkSize; x++) {
+                    for (int z = 0; z < ChunkSize; z++) {
                         AddVoxelDataToChunk(x, y, z);
                     }
                 }
@@ -144,12 +146,12 @@ public class Chunk {
 
             for (int face = 0; face < 3; face++) {
 
-                Vector3Int faceCheck = VoxelData.FaceChecks[face];
+                Vector3Int faceCheck = Block.FaceChecks[face];
                 Vector3Int neighborPosInChunk = blockPosInChunk + faceCheck;
 
                 BlockID neighborBlockID;
 
-                if (neighborPosInChunk.x == VoxelData.ChunkSize) {
+                if (neighborPosInChunk.x == ChunkSize) {
 
                     Chunk neighborChunk = this.pos.x == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[0, this.pos.y] : this.planet.chunks[this.pos.x + 1, this.pos.y];
 
@@ -159,7 +161,7 @@ public class Chunk {
 
                     neighborBlockID = neighborChunk.data.blocks[0, neighborPosInChunk.y, neighborPosInChunk.z];
 
-                } else if (neighborPosInChunk.z == VoxelData.ChunkSize) {
+                } else if (neighborPosInChunk.z == ChunkSize) {
 
                     Chunk neighborChunk = this.pos.y == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[this.pos.x, 0] : this.planet.chunks[this.pos.x, this.pos.y + 1];
 
@@ -227,26 +229,26 @@ public class Chunk {
         try {
 
             for (int i = 0; i < 4; i++) {
-                int index = VoxelData.Triangles[face, i];
-                Vector3Int vertex = blockPosInChunk + VoxelData.Vertices[index];
+                int index = Block.Triangles[face, i];
+                Vector3Int vertex = blockPosInChunk + Block.Vertices[index];
                 vertices.Add(vertex);
             }
 
             Block block = this.planet.blockTypes[(byte)blockID];
             int textureID = block.GetTextureID(face);
 
-            float y = textureID / VoxelData.TextureAtlasSizeInBlocks;
-            float x = textureID - (y * VoxelData.TextureAtlasSizeInBlocks);
+            float y = textureID / Block.TextureAtlasSizeInBlocks;
+            float x = textureID - (y * Block.TextureAtlasSizeInBlocks);
 
-            x *= VoxelData.NormalizedBlockTextureSize;
-            y *= VoxelData.NormalizedBlockTextureSize;
+            x *= Block.NormalizedBlockTextureSize;
+            y *= Block.NormalizedBlockTextureSize;
 
-            y = 1f - y - VoxelData.NormalizedBlockTextureSize;
+            y = 1f - y - Block.NormalizedBlockTextureSize;
 
             uvs.Add(new Vector2(x, y));
-            uvs.Add(new Vector2(x, y + VoxelData.NormalizedBlockTextureSize));
-            uvs.Add(new Vector2(x + VoxelData.NormalizedBlockTextureSize, y));
-            uvs.Add(new Vector2(x + VoxelData.NormalizedBlockTextureSize, y + VoxelData.NormalizedBlockTextureSize));
+            uvs.Add(new Vector2(x, y + Block.NormalizedBlockTextureSize));
+            uvs.Add(new Vector2(x + Block.NormalizedBlockTextureSize, y));
+            uvs.Add(new Vector2(x + Block.NormalizedBlockTextureSize, y + Block.NormalizedBlockTextureSize));
 
             if (blockID == BlockID.Water) {
 
@@ -310,7 +312,7 @@ public class Chunk {
             this.meshFilter = gameObject.GetComponent<MeshFilter>();
 
             this.gameObject.transform.SetParent(planet.gameObject.transform);
-            this.gameObject.transform.position = new Vector3(pos.x * VoxelData.ChunkSize, 0, pos.y * VoxelData.ChunkSize);
+            this.gameObject.transform.position = new Vector3(pos.x * ChunkSize, 0, pos.y * ChunkSize);
             this.gameObject.name = $"Chunk {normalizedPos.x}, {normalizedPos.y}";
             this.gameObject.SetActive(true);
 
@@ -332,7 +334,7 @@ public class ChunkData {
     public ChunkData(Planet planet) {
         try {
 
-            this.blocks = new BlockID[VoxelData.ChunkSize, planet.WorldHeight, VoxelData.ChunkSize];
+            this.blocks = new BlockID[Chunk.ChunkSize, planet.WorldHeight, Chunk.ChunkSize];
 
         } catch (Exception ex) {
             Debug.LogError("Error in ChunkData Constructor: " + ex.Message);
