@@ -27,8 +27,8 @@ public class Inventory {
             SetItem(3, BlockID.Wood);
             SetItem(4, BlockID.Leaf);
             SetItem(5, BlockID.Bedrock);
-            SetItem(6, BlockID.Air);
-            SetItem(7, BlockID.Air);
+            SetItem(6, BlockID.Glass);
+            SetItem(7, BlockID.Water);
             SetItem(8, BlockID.Air);
             SetItem(9, BlockID.Air);
 

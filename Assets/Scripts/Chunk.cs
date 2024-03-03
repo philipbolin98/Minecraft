@@ -19,7 +19,7 @@ public class Chunk {
     };
 
     public MeshFilter meshFilter;
-    public MeshCollider meshCollider;
+    public MeshRenderer meshRenderer;
     public Mesh mesh = new();
     public GameObject gameObject;
     public Vector2Int pos;
@@ -29,9 +29,10 @@ public class Chunk {
 
     private List<Vector3> vertices = new();
     private List<int> triangles = new();
+    private List<int> transparentTriangles = new();
     private List<int> waterTriangles = new();
     private List<Vector2> uvs = new();
-
+    private Material[] materials = new Material[3];
     private int vertexIndex = 0;
 
     public Dictionary<Vector3Int, string> structures = new();
@@ -52,6 +53,10 @@ public class Chunk {
             this.planet = planet;
             this.data = new ChunkData(planet);
             planet.chunks[pos.x, pos.y] = this;
+
+            this.materials[0] = planet.material;
+            this.materials[1] = planet.waterMaterial;
+            this.materials[2] = planet.transparentMaterial;
 
         } catch (Exception e) {
             Debug.LogError("Error in function Chunk.Constructor: " + e.Message);
@@ -83,6 +88,7 @@ public class Chunk {
             vertexIndex = 0;
             vertices.Clear();
             triangles.Clear();
+            transparentTriangles.Clear();
             waterTriangles.Clear();
             uvs.Clear();
 
@@ -192,11 +198,27 @@ public class Chunk {
                         AddTexture(blockPosInChunk, blockID, face);
                     } else if (this.planet.blockTypes[(int)neighborBlockID].isSolid) {
                         AddTexture(neighborPosInChunk, neighborBlockID, face + 3);
+
+                        if (this.planet.blockTypes[(int)neighborBlockID].isTransparent) {
+                            AddTexture(blockPosInChunk, blockID, face);
+                        }
+                    }
+
+                } else if (this.planet.blockTypes[(int)blockID].isTransparent) {
+
+                    if (!this.planet.blockTypes[(int)neighborBlockID].isTransparent) {
+                        AddTexture(neighborPosInChunk, neighborBlockID, face + 3);
+                    } else if (blockID != neighborBlockID) {
+                        AddTexture(blockPosInChunk, blockID, face);
+
+                        if (neighborBlockID != BlockID.Air) {
+                            AddTexture(neighborPosInChunk, neighborBlockID, face + 3);
+                        }
                     }
 
                 } else {
 
-                    if (!this.planet.blockTypes[(int)neighborBlockID].isSolid) {
+                    if (this.planet.blockTypes[(int)neighborBlockID].isTransparent) {
                         AddTexture(blockPosInChunk, blockID, face);
                     }
                 }
@@ -211,12 +233,14 @@ public class Chunk {
         try {
 
             this.meshFilter.mesh = null;
+            this.meshRenderer.materials = this.materials;
             this.mesh.Clear();
-            this.mesh.subMeshCount = 2;
+            this.mesh.subMeshCount = 3;
             this.mesh.vertices = vertices.ToArray();
             this.mesh.uv = uvs.ToArray();
             this.mesh.SetTriangles(triangles.ToArray(), 0);
             this.mesh.SetTriangles(waterTriangles.ToArray(), 1);
+            this.mesh.SetTriangles(transparentTriangles.ToArray(), 2);
             this.mesh.RecalculateNormals();
             this.meshFilter.mesh = this.mesh;
 
@@ -258,6 +282,15 @@ public class Chunk {
                 waterTriangles.Add(vertexIndex + 2);
                 waterTriangles.Add(vertexIndex + 1);
                 waterTriangles.Add(vertexIndex + 3);
+
+            } else if (block.isTransparent) {
+
+                transparentTriangles.Add(vertexIndex);
+                transparentTriangles.Add(vertexIndex + 1);
+                transparentTriangles.Add(vertexIndex + 2);
+                transparentTriangles.Add(vertexIndex + 2);
+                transparentTriangles.Add(vertexIndex + 1);
+                transparentTriangles.Add(vertexIndex + 3);
 
             } else {
 
@@ -310,6 +343,7 @@ public class Chunk {
             }
 
             this.meshFilter = gameObject.GetComponent<MeshFilter>();
+            this.meshRenderer = gameObject.GetComponent<MeshRenderer>();
 
             this.gameObject.transform.SetParent(planet.gameObject.transform);
             this.gameObject.transform.position = new Vector3(pos.x * ChunkSize, 0, pos.y * ChunkSize);

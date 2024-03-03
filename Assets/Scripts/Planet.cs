@@ -41,6 +41,10 @@ public class Planet : MonoBehaviour {
     [HideInInspector]
     public TerrainGenerator terrainGenerator;
 
+    public Material material;
+    public Material transparentMaterial;
+    public Material waterMaterial;
+
     private bool gameRunning = true;
 
     private void Start() {

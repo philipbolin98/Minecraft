@@ -59,7 +59,6 @@ public class TerrainGenerator : MonoBehaviour {
 
             float noiseValue = TorusNoise(planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius, this.torusTubeRadius);
             int terrainHeight = oceanFloorLevel + Mathf.FloorToInt((biome.maxTerrainHeight - oceanFloorLevel) * noiseValue);
-            int treeLevel = terrainHeight + 1;
 
             for (int y = 0; y < planet.WorldHeight; y++) {
 
@@ -68,6 +67,7 @@ public class TerrainGenerator : MonoBehaviour {
                 }
 
                 BlockID blockID;
+                bool generateTree = false;
 
                 if (!HelperFunctions.IsBlockInPlanet(planet, y)) {
                     blockID = BlockID.Air;
@@ -84,6 +84,7 @@ public class TerrainGenerator : MonoBehaviour {
                         blockID = BlockID.Sand;
                     } else {
                         blockID = biome.surfaceBlock;
+                        generateTree = true;
                     }
                 } else if (y > terrainHeight - 4) { //Dirt for next 3 layers
                     blockID = BlockID.Dirt;
@@ -91,12 +92,12 @@ public class TerrainGenerator : MonoBehaviour {
                     blockID = BlockID.Stone;
                 }
 
-                if (y == treeLevel && y >= seaLevel && biome.name != "Plains") {
+                if (generateTree && biome.name != "Plains") {
 
                     float treeValue = Noise2D(blockXInPlanet * 256, blockZInPlanet * 256);
 
                     if (treeValue > treeThreshold) {
-                        chunk.structures.Add(new Vector3Int(blockXInChunk, y, blockZInChunk), biome.name);
+                        chunk.structures.Add(new Vector3Int(blockXInChunk, y + 1, blockZInChunk), biome.name);
                         //GenerateTree(chunk, biome.name, blockXInChunk, y, blockZInChunk);
                     }
                 }

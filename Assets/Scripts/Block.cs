@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
@@ -59,6 +57,7 @@ public class Block {
 
     public string blockName;
     public bool isSolid;
+    public bool isTransparent;
     public Sprite icon;
 
     [Header("Texture Values")]
@@ -113,5 +112,6 @@ public enum BlockID {
     Water = 5,
     Sand = 6,
     Wood = 7,
-    Leaf = 8
+    Leaf = 8,
+    Glass = 9
 }

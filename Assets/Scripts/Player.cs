@@ -13,10 +13,11 @@ public class Player : MonoBehaviour {
 
     private Inventory inventory;
 
-    private bool isGrounded;
-    private bool isSprinting;
-    private bool isCrouching;
-    private bool spectatorMode;
+    private bool isGrounded = false;
+    private bool isSprinting = false;
+    private bool isCrouching = false;
+    private bool spectatorMode = false;
+    private bool showHighlightBlocks = false;
     private Vector2Int currentChunk;
 
     private Transform cam;
@@ -46,8 +47,11 @@ public class Player : MonoBehaviour {
 
     private GameObject breakHighlightBlock;
     private GameObject placeHighlightBlock;
-
+    
+    private bool canBreakBlock = false;
     private Vector3Int breakPos;
+
+    private bool canPlaceBlock = false;
     private Vector3Int placePos;
 
     private void Start() {
@@ -108,8 +112,8 @@ public class Player : MonoBehaviour {
         try {
 
             GetPlayerInputs();
-            PositionHighlightBlocks();
-            
+            GetTargetedBlock();
+
         } catch (Exception ex) {
             Debug.LogError("Error in Player Update: " + ex.Message);
         }
@@ -131,9 +135,35 @@ public class Player : MonoBehaviour {
 
             isSprinting = Input.GetButton("Sprint");
 
-            //F2 to enable spectator mode for debugging purposes
-            if (Input.GetKeyDown(KeyCode.F2)) {
+            //F1 to enable spectator mode for debugging purposes
+            if (Input.GetKeyDown(KeyCode.F1)) {
                 spectatorMode = !spectatorMode;
+            }
+
+            //F2 to show/hide the highlight blocks
+            if (Input.GetKeyDown(KeyCode.F2)) {
+                showHighlightBlocks = !showHighlightBlocks;
+
+                if (showHighlightBlocks) {
+                    if (canBreakBlock) {
+
+                        breakHighlightBlock.transform.position = breakPos;
+                        breakHighlightBlock.SetActive(true);
+
+                        if (canPlaceBlock) {
+                            placeHighlightBlock.transform.position = placePos;
+                            placeHighlightBlock.SetActive(true);
+                        }
+                    }
+                } else {
+                    if (breakHighlightBlock.activeSelf) {
+                        breakHighlightBlock.SetActive(false);
+                    }
+
+                    if (placeHighlightBlock.activeSelf) {
+                        placeHighlightBlock.SetActive(false);
+                    }
+                }
             }
 
             if (spectatorMode) {
@@ -160,22 +190,22 @@ public class Player : MonoBehaviour {
                 }
             }
 
-            //F1 to reload the game for debugging purposes
-            if (Input.GetKeyDown(KeyCode.F1)) {
+            //F12 to reload the game for debugging purposes
+            if (Input.GetKeyDown(KeyCode.F12)) {
                 SceneManager.LoadScene("SampleScene");
             }
 
             //On left click, break the block at the targeted location
-            if (Input.GetMouseButtonDown(0) && breakHighlightBlock.activeSelf) {
+            if (Input.GetMouseButtonDown(0) && canBreakBlock) {
                 EditBlock(breakPos, BlockID.Air);
-                PositionHighlightBlocks();
+                GetTargetedBlock();
             }
 
             //On right click, place a block at the targeted location
-            if (Input.GetMouseButtonDown(1) && placeHighlightBlock.activeSelf) {
+            if (Input.GetMouseButtonDown(1) && canPlaceBlock) {
                 BlockID blockInHand = inventory.items[inventory.slotIndex];
                 EditBlock(placePos, blockInHand);
-                PositionHighlightBlocks();
+                GetTargetedBlock();
             }
 
             float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -428,45 +458,53 @@ public class Player : MonoBehaviour {
     /// <summary>
     /// Places and enables/disables the highlight blocks
     /// </summary>
-    private void PositionHighlightBlocks() {
+    private void GetTargetedBlock() {
         try {
 
             Vector3Int camPos = Vector3Int.FloorToInt(cam.position);
+            Vector3 startPos = cam.position;
+            Vector3 endPos = startPos + cam.forward.normalized * reach;
 
-            if (GetTargetedBlock(camPos)) {
+            canBreakBlock = GetTargetedBlockHelper(startPos, endPos, camPos);
 
-                if (breakHighlightBlock.transform.position != breakPos || !breakHighlightBlock.activeSelf) {
-                    breakHighlightBlock.transform.position = breakPos;
-                    breakHighlightBlock.SetActive(true);
-                }
+            if (canBreakBlock) {
 
-                if (CanPlayerPlaceBlock()) {
-
-                    if (placeHighlightBlock.transform.position != placePos || !placeHighlightBlock.activeSelf) {
-                        placeHighlightBlock.transform.position = placePos;
-                        placeHighlightBlock.SetActive(true);
+                if (showHighlightBlocks) {
+                    if (breakHighlightBlock.transform.position != breakPos || !breakHighlightBlock.activeSelf) {
+                        breakHighlightBlock.transform.position = breakPos;
+                        breakHighlightBlock.SetActive(true);
                     }
+                }
+                
+                canPlaceBlock = CanPlayerPlaceBlock();
 
-                } else {
+                if (showHighlightBlocks) {
+                    if (canPlaceBlock) {
+                        if (placeHighlightBlock.transform.position != placePos || !placeHighlightBlock.activeSelf) {
+                            placeHighlightBlock.transform.position = placePos;
+                            placeHighlightBlock.SetActive(true);
+                        }
+                    } else {
+                        if (placeHighlightBlock.activeSelf) {
+                            placeHighlightBlock.SetActive(false);
+                        }
+                    }
+                }
+                
+            } else {
+                if (showHighlightBlocks) {
+                    if (breakHighlightBlock.activeSelf) {
+                        breakHighlightBlock.SetActive(false);
+                    }
 
                     if (placeHighlightBlock.activeSelf) {
                         placeHighlightBlock.SetActive(false);
                     }
                 }
-                
-            } else {
-
-                if (breakHighlightBlock.activeSelf) {
-                    breakHighlightBlock.SetActive(false);
-                }
-
-                if (placeHighlightBlock.activeSelf) {
-                    placeHighlightBlock.SetActive(false);
-                }
             }
-
+                
         } catch (Exception ex) {
-            Debug.LogError("Error in Player PositionHighlightBlocks: " + ex.Message);
+            Debug.LogError("Error in Player GetTargetedBlock: " + ex.Message);
         }
     }
 
@@ -503,13 +541,10 @@ public class Player : MonoBehaviour {
     /// </summary>
     /// <param name="startBlockPos">The starting block position</param>
     /// <returns>True if a solid block within reach was targeted, false otherwise</returns>
-    private bool GetTargetedBlock(Vector3Int startBlockPos) {
+    private bool GetTargetedBlockHelper(Vector3 startPos, Vector3 endPos, Vector3Int startBlockPos) {
         try {
 
-            Vector3 startPos = cam.position;
-            Vector3 endPos = startPos + cam.forward.normalized * reach;
             Vector3Int blockPos = Vector3Int.zero;
-
             bool hit = false;
 
             //Check the neighbors of the starting block on the x axis
@@ -528,7 +563,7 @@ public class Player : MonoBehaviour {
                     placePos = startBlockPos;
                     return true;
                 } else { //The block was not solid, recurse with the block position as the new starting point
-                    return GetTargetedBlock(blockPos);
+                    return GetTargetedBlockHelper(startPos, endPos, blockPos);
                 }
             }
 
@@ -548,7 +583,7 @@ public class Player : MonoBehaviour {
                     placePos = startBlockPos;
                     return true;
                 } else { //The block was not solid, recurse with the block position as the new starting point
-                    return GetTargetedBlock(blockPos);
+                    return GetTargetedBlockHelper(startPos, endPos, blockPos);
                 }
             }
 
@@ -568,12 +603,12 @@ public class Player : MonoBehaviour {
                     placePos = startBlockPos;
                     return true;
                 } else { //The block was not solid, recurse with the block position as the new starting point
-                    return GetTargetedBlock(blockPos);
+                    return GetTargetedBlockHelper(startPos, endPos, blockPos);
                 }
             }
 
         } catch (Exception ex) {
-            Debug.LogError("Error in Player GetTargetedBlock: " + ex.Message);
+            Debug.LogError("Error in Player GetTargetedBlockHelper: " + ex.Message);
         }
 
         //The starting block has no neighboring block that was hit

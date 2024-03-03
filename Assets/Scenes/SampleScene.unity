@@ -789,6 +789,7 @@ MonoBehaviour:
   blockTypes:
   - blockName: Air
     isSolid: 0
+    isTransparent: 1
     icon: {fileID: 0}
     rightFaceTexture: 0
     topFaceTexture: 0
@@ -798,6 +799,7 @@ MonoBehaviour:
     backFaceTexture: 0
   - blockName: Bedrock
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: 1460811140, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 4
     topFaceTexture: 4
@@ -807,6 +809,7 @@ MonoBehaviour:
     backFaceTexture: 4
   - blockName: Stone
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: 1209869727, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 3
     topFaceTexture: 3
@@ -816,6 +819,7 @@ MonoBehaviour:
     backFaceTexture: 3
   - blockName: Grass
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: -1913951231, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 1
     topFaceTexture: 0
@@ -825,6 +829,7 @@ MonoBehaviour:
     backFaceTexture: 1
   - blockName: Dirt
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: -628285315, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 2
     topFaceTexture: 2
@@ -834,6 +839,7 @@ MonoBehaviour:
     backFaceTexture: 2
   - blockName: Water
     isSolid: 0
+    isTransparent: 1
     icon: {fileID: -1444940953, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 5
     topFaceTexture: 5
@@ -843,6 +849,7 @@ MonoBehaviour:
     backFaceTexture: 5
   - blockName: Sand
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: -1277889711, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 6
     topFaceTexture: 6
@@ -852,6 +859,7 @@ MonoBehaviour:
     backFaceTexture: 6
   - blockName: Wood
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: -58497366, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 7
     topFaceTexture: 8
@@ -861,6 +869,7 @@ MonoBehaviour:
     backFaceTexture: 7
   - blockName: Leaf
     isSolid: 1
+    isTransparent: 0
     icon: {fileID: 1764138015, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
     rightFaceTexture: 9
     topFaceTexture: 9
@@ -868,6 +877,16 @@ MonoBehaviour:
     leftFaceTexture: 9
     bottomFaceTexture: 9
     backFaceTexture: 9
+  - blockName: Glass
+    isSolid: 1
+    isTransparent: 1
+    icon: {fileID: 963974440, guid: f48ebe9b977de4c498bb59f7ad301eeb, type: 3}
+    rightFaceTexture: 10
+    topFaceTexture: 10
+    frontFaceTexture: 10
+    leftFaceTexture: 10
+    bottomFaceTexture: 10
+    backFaceTexture: 10
   biomes:
   - name: Plains
     surfaceBlock: 3
@@ -880,6 +899,9 @@ MonoBehaviour:
     maxTerrainHeight: 128
   chunksToMesh: []
   terrainGenerator: {fileID: 0}
+  material: {fileID: 2100000, guid: 1a40333bfe3eda44bbfedcb635179465, type: 2}
+  transparentMaterial: {fileID: 2100000, guid: c934d6633fbeaa6419552403dc4bffe1, type: 2}
+  waterMaterial: {fileID: 2100000, guid: c934d6633fbeaa6419552403dc4bffe1, type: 2}
 --- !u!1001 &680412897
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1538,7 +1560,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oceanFloorLevel: 40
-  seaLevel: 64
+  seaLevel: 78
   treeThreshold: 0.75
   torusCenterRadius: 256
   torusTubeRadius: 256
