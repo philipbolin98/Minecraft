@@ -454,6 +454,51 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 294370600}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &435602254
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 435602255}
+  - component: {fileID: 435602256}
+  m_Layer: 0
+  m_Name: StructureGenerator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &435602255
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435602254}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &435602256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435602254}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e613e42decaa3fd42a8974227339b36e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  planet: {fileID: 0}
 --- !u!1001 &515052665
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -778,9 +823,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   seed: 0
-  PlanetSizeInChunks: 64
+  PlanetSizeInChunks: 256
   PlanetSizeInVoxels: 0
-  ViewDistanceInChunks: 8
+  ViewDistanceInChunks: 32
   WorldHeight: 128
   gravity: -9.8
   player: {fileID: 2739253966396178574, guid: 6c91cf048b807e94fa6312b471788374, type: 3}
@@ -897,8 +942,8 @@ MonoBehaviour:
   - name: Desert
     surfaceBlock: 6
     maxTerrainHeight: 128
-  chunksToMesh: []
   terrainGenerator: {fileID: 0}
+  structureGenerator: {fileID: 0}
   material: {fileID: 2100000, guid: 1a40333bfe3eda44bbfedcb635179465, type: 2}
   transparentMaterial: {fileID: 2100000, guid: c934d6633fbeaa6419552403dc4bffe1, type: 2}
   waterMaterial: {fileID: 2100000, guid: c934d6633fbeaa6419552403dc4bffe1, type: 2}
@@ -1559,6 +1604,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57a54ec929920244aacd9c7f79af0702, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  planet: {fileID: 0}
   oceanFloorLevel: 40
   seaLevel: 78
   treeThreshold: 0.75
@@ -2470,6 +2516,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 705507995}
   - {fileID: 1136969350}
+  - {fileID: 435602255}
   - {fileID: 630806488}
   - {fileID: 1300140876}
   - {fileID: 1943571571}

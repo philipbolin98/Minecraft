@@ -6,7 +6,7 @@ public class TerrainGenerator : MonoBehaviour {
     private static float tau = 2 * Mathf.PI;
 
     private FastNoiseLite FastNoise;
-    private int seed;
+    public Planet planet;
 
     public int oceanFloorLevel;
     public int seaLevel;
@@ -26,17 +26,17 @@ public class TerrainGenerator : MonoBehaviour {
     public float torusCenterRadiusBiomes;
     public float torusTubeRadiusBiomes;
 
-    public void Initialize(int seed) {
+    public void Initialize(Planet planet) {
         try {
 
-            this.seed = seed;
-            UnityEngine.Random.InitState(seed);
+            this.planet = planet;
+            this.FastNoise = new FastNoiseLite(planet.seed);
+            this.FastNoise.SetNoiseType(FastNoiseLite.NoiseType.ValueCubic);
 
-            FastNoise = new FastNoiseLite(seed);
-            FastNoise.SetNoiseType(FastNoiseLite.NoiseType.ValueCubic);
-
-            torusCenterRadiusBiomes = torusCenterRadius / 4;
-            torusTubeRadiusBiomes = torusTubeRadius / 4;
+            this.torusCenterRadius = planet.PlanetSizeInChunks * 4;
+            this.torusTubeRadius = torusCenterRadius;
+            this.torusCenterRadiusBiomes = planet.PlanetSizeInChunks;
+            this.torusTubeRadiusBiomes = planet.PlanetSizeInChunks;
 
         } catch (Exception ex) {
             Debug.LogError("Error in TerrainGenerator Initialize: " + ex.Message);
@@ -48,30 +48,20 @@ public class TerrainGenerator : MonoBehaviour {
 
             Planet planet = chunk.planet;
 
-            int blockXInPlanet = chunk.posInBlocks.x + blockXInChunk;
-            int blockZInPlanet = chunk.posInBlocks.y + blockZInChunk;
+            int blockXInPlanet = chunk.normalizedPosInBlocks.x + blockXInChunk;
+            int blockZInPlanet = chunk.normalizedPosInBlocks.y + blockZInChunk;
 
-            //FastNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
+            Biome biome = GetBiome(blockXInPlanet, blockZInPlanet);
+            int terrainHeight = GetTerrainHeight(blockXInPlanet, blockZInPlanet, biome);
 
-            float biomeNoiseValue = TorusNoise(planet, blockXInPlanet, blockZInPlanet, torusCenterRadiusBiomes, torusTubeRadiusBiomes);
-            int biomeIndex = Mathf.FloorToInt(biomeNoiseValue * planet.biomes.Length);
-            Biome biome = planet.biomes[biomeIndex];
+            int maxY = Mathf.Max(terrainHeight, seaLevel) + 1;
+            maxY = Mathf.Min(maxY, planet.WorldHeight);
 
-            float noiseValue = TorusNoise(planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius, this.torusTubeRadius);
-            int terrainHeight = oceanFloorLevel + Mathf.FloorToInt((biome.maxTerrainHeight - oceanFloorLevel) * noiseValue);
-
-            for (int y = 0; y < planet.WorldHeight; y++) {
-
-                if (chunk.data.blocks[blockXInChunk, y, blockZInChunk] > BlockID.Air) {
-                    continue;
-                }
+            for (int y = 0; y < maxY; y++) {
 
                 BlockID blockID;
-                bool generateTree = false;
 
-                if (!HelperFunctions.IsBlockInPlanet(planet, y)) {
-                    blockID = BlockID.Air;
-                } else if (y > terrainHeight) {
+                if (y > terrainHeight) {
                     if (y < seaLevel) { //Water when above the surface but below sea level
                         blockID = BlockID.Water;
                     } else { //Air when above the surface and above sea level
@@ -84,22 +74,11 @@ public class TerrainGenerator : MonoBehaviour {
                         blockID = BlockID.Sand;
                     } else {
                         blockID = biome.surfaceBlock;
-                        generateTree = true;
                     }
                 } else if (y > terrainHeight - 4) { //Dirt for next 3 layers
                     blockID = BlockID.Dirt;
                 } else { //Everything else stone
                     blockID = BlockID.Stone;
-                }
-
-                if (generateTree && biome.name != "Plains") {
-
-                    float treeValue = Noise2D(blockXInPlanet * 256, blockZInPlanet * 256);
-
-                    if (treeValue > treeThreshold) {
-                        chunk.structures.Add(new Vector3Int(blockXInChunk, y + 1, blockZInChunk), biome.name);
-                        //GenerateTree(chunk, biome.name, blockXInChunk, y, blockZInChunk);
-                    }
                 }
 
                 chunk.data.blocks[blockXInChunk, y, blockZInChunk] = blockID;
@@ -110,142 +89,30 @@ public class TerrainGenerator : MonoBehaviour {
         }
     }
 
-    public void GenerateTree(Chunk chunk, string biomeName, int startX, int startY, int startZ) {
+    public Biome GetBiome(int blockXInPlanet, int blockZInPlanet) {
         try {
 
-            //Not sure if im going to use this method yet
-            //foreach (Tuple<Vector3Int, BlockID> block in Structures.tree) {
-
-            //    int y = startY + block.Item1.y;
-
-            //    if (y < chunk.planet.WorldHeight) {
-
-            //        int x = startX + block.Item1.x;
-            //        int z = startZ + block.Item1.z;
-
-            //        Vector2Int chunkPos = chunk.pos;
-
-            //        if (x >= VoxelData.ChunkSize) {
-            //            x = Mathf.FloorToInt(HelperFunctions.Modulo(x, VoxelData.ChunkSize));
-            //            chunkPos.x++;
-
-            //            if (chunkPos.x == chunk.planet.PlanetSizeInChunks) {
-            //                chunkPos.x = 0;
-            //            }
-
-            //        } else if (x < 0) {
-            //            x = Mathf.FloorToInt(HelperFunctions.Modulo(x, VoxelData.ChunkSize));
-            //            chunkPos.x--;
-
-            //            if (chunkPos.x == -1) {
-            //                chunkPos.x = chunk.planet.PlanetSizeInChunks - 1;
-            //            }
-            //        }
-
-            //        if (z >= VoxelData.ChunkSize) {
-            //            z = Mathf.FloorToInt(HelperFunctions.Modulo(z, VoxelData.ChunkSize));
-            //            chunkPos.y++;
-
-            //            if (chunkPos.y == chunk.planet.PlanetSizeInChunks) {
-            //                chunkPos.y = 0;
-            //            }
-
-            //        } else if (z < 0) {
-            //            z = Mathf.FloorToInt(HelperFunctions.Modulo(z, VoxelData.ChunkSize));
-            //            chunkPos.y--;
-
-            //            if (chunkPos.y == -1) {
-            //                chunkPos.y = chunk.planet.PlanetSizeInChunks - 1;
-            //            }
-            //        }
-
-            //        Chunk newChunk = chunk.planet.chunks[chunkPos.x, chunkPos.y];
-
-            //        BlockID currentBlockID = newChunk.data.blocks[x, y, z];
-
-            //        if (currentBlockID == BlockID.Air) {
-            //            newChunk.data.blocks[x, y, z] = block.Item2;
-            //        }
-            //    }
-            //}
-
-            for (int i = 0; i < 6; i++) {
-
-                int treeY = startY + i;
-
-                if (treeY < chunk.planet.WorldHeight) {
-
-                    BlockID currentBlockID = chunk.data.blocks[startX, treeY, startZ];
-
-                    if (currentBlockID == BlockID.Air || currentBlockID == BlockID.Leaf) {
-                        chunk.data.blocks[startX, treeY, startZ] = BlockID.Wood;
-                    }
-                }
-            }
-
-            for (int i = 4; i < 7; i++) {
-
-                int treeY = startY + i;
-
-                if (treeY < chunk.planet.WorldHeight) {
-
-                    int radius = 6 - i;
-
-                    for (int j = startX - radius; j <= startX + radius; j++) {
-                        for (int k = startZ - radius; k <= startZ + radius; k++) {
-
-                            Vector2Int chunkPos = chunk.pos;
-                            int x = j;
-                            int z = k;
-
-                            if (x >= Chunk.ChunkSize) {
-                                x = Mathf.FloorToInt(HelperFunctions.Modulo(x, Chunk.ChunkSize));
-                                chunkPos.x++;
-
-                                if (chunkPos.x == chunk.planet.PlanetSizeInChunks) {
-                                    chunkPos.x = 0;
-                                }
-
-                            } else if (x < 0) {
-                                x = Mathf.FloorToInt(HelperFunctions.Modulo(x, Chunk.ChunkSize));
-                                chunkPos.x--;
-
-                                if (chunkPos.x == -1) {
-                                    chunkPos.x = chunk.planet.PlanetSizeInChunks - 1;
-                                }
-                            }
-
-                            if (z >= Chunk.ChunkSize) {
-                                z = Mathf.FloorToInt(HelperFunctions.Modulo(z, Chunk.ChunkSize));
-                                chunkPos.y++;
-
-                                if (chunkPos.y == chunk.planet.PlanetSizeInChunks) {
-                                    chunkPos.y = 0;
-                                }
-
-                            } else if (z < 0) {
-                                z = Mathf.FloorToInt(HelperFunctions.Modulo(z, Chunk.ChunkSize));
-                                chunkPos.y--;
-
-                                if (chunkPos.y == -1) {
-                                    chunkPos.y = chunk.planet.PlanetSizeInChunks - 1;
-                                }
-                            }
-
-                            Chunk newChunk = chunk.planet.chunks[chunkPos.x, chunkPos.y];
-
-                            BlockID currentBlockID = newChunk.data.blocks[x, treeY, z];
-
-                            if (currentBlockID == BlockID.Air) {
-                                newChunk.data.blocks[x, treeY, z] = BlockID.Leaf;
-                            }
-                        }
-                    }
-                }
-            }
+            float biomeNoiseValue = TorusNoise(this.planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadiusBiomes, this.torusTubeRadiusBiomes);
+            int biomeIndex = Mathf.FloorToInt(biomeNoiseValue * this.planet.biomes.Length);
+            Biome biome = this.planet.biomes[biomeIndex];
+            return biome;
 
         } catch (Exception ex) {
-            Debug.LogError("Error in TerrainGenerator GenerateTree: " + ex.Message);
+            Debug.LogError("Error in TerrainGenerator GetBiome: " + ex.Message);
+            return null;
+        }
+    }
+
+    public int GetTerrainHeight(int blockXInPlanet, int blockZInPlanet, Biome biome) {
+        try {
+
+            float noiseValue = TorusNoise(this.planet, blockXInPlanet, blockZInPlanet, this.torusCenterRadius, this.torusTubeRadius);
+            int terrainHeight = oceanFloorLevel + Mathf.FloorToInt((biome.maxTerrainHeight - oceanFloorLevel) * noiseValue);
+            return terrainHeight;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in TerrainGenerator GetTerrainHeight: " + ex.Message);
+            return 0;
         }
     }
 

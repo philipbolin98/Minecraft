@@ -23,7 +23,8 @@ public class Chunk {
     public Mesh mesh = new();
     public GameObject gameObject;
     public Vector2Int pos;
-    public Vector2Int posInBlocks;
+    public Vector2Int normalizedPos;
+    public Vector2Int normalizedPosInBlocks;
     public Planet planet;
     public ChunkData data;
 
@@ -35,9 +36,8 @@ public class Chunk {
     private Material[] materials = new Material[3];
     private int vertexIndex = 0;
 
-    public Dictionary<Vector3Int, string> structures = new();
-
     public ChunkStage stage = ChunkStage.Null;
+    public bool modified = false;
 
     /// <summary>
     /// Creates a new chunk object and renders it
@@ -45,21 +45,22 @@ public class Chunk {
     /// <param name="planet"></param>
     /// <param name="pos"></param>
     /// <param name="normalizedPos"></param>
-    public Chunk(Planet planet, Vector2Int pos) {
+    public Chunk(Planet planet, Vector2Int pos, Vector2Int normalizedPos) {
         try {
 
             this.pos = pos;
-            this.posInBlocks = pos * ChunkSize;
+            this.normalizedPos = normalizedPos;
+            this.normalizedPosInBlocks = normalizedPos * ChunkSize;
             this.planet = planet;
             this.data = new ChunkData(planet);
-            planet.chunks[pos.x, pos.y] = this;
+            planet.chunks[normalizedPos.x, normalizedPos.y] = this;
 
             this.materials[0] = planet.material;
             this.materials[1] = planet.waterMaterial;
             this.materials[2] = planet.transparentMaterial;
 
-        } catch (Exception e) {
-            Debug.LogError("Error in function Chunk.Constructor: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in function Chunk.Constructor: " + ex.Message);
         }
     }
 
@@ -75,10 +76,25 @@ public class Chunk {
                 }
             }
 
-            this.stage = this.structures.Count == 0 ? ChunkStage.StructuresGenerated : ChunkStage.DataPopulated;
+            this.planet.structureGenerator.GenerateStructures(this, this.normalizedPos);
+            this.GenerateStructuresInNeighboringChunks();
+            this.stage = ChunkStage.Populated;
 
-        } catch (Exception e) {
-            Debug.LogError("Error in Chunk Popuplate: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk Popuplate: " + ex.Message);
+        }
+    }
+
+    public void GenerateStructuresInNeighboringChunks() {
+        try {
+
+            foreach (Vector2Int offset in NeighboringChunks) {
+                Vector2Int chunkPos = HelperFunctions.NormalizeChunkPos(this.planet, this.normalizedPos + offset);
+                this.planet.structureGenerator.GenerateStructures(this, chunkPos);
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk GenerateStructuresInNeighboringChunks: " + ex.Message);
         }
     }
 
@@ -94,23 +110,6 @@ public class Chunk {
 
         } catch (Exception ex) {
             Debug.LogError("Error in Chunk ClearMeshData: " + ex.Message);
-        }
-    }
-
-    public void GenerateStructures() {
-        try {
-
-            foreach (KeyValuePair<Vector3Int, string> kvp in this.structures) {
-                Vector3Int blockPos = kvp.Key;
-                string biomeName = kvp.Value;
-                this.planet.terrainGenerator.GenerateTree(this, biomeName, blockPos.x, blockPos.y, blockPos.z);
-            }
-
-            this.structures.Clear();
-            this.stage = ChunkStage.StructuresGenerated;
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in Chunk GenerateStructures: " + ex.Message);
         }
     }
 
@@ -132,8 +131,8 @@ public class Chunk {
 
             this.stage = ChunkStage.MeshCreated;
 
-        } catch (Exception e) {
-            Debug.LogError("Error in function Chunk.CreateMeshData: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in function Chunk.CreateMeshData: " + ex.Message);
         }
     }
 
@@ -159,7 +158,7 @@ public class Chunk {
 
                 if (neighborPosInChunk.x == ChunkSize) {
 
-                    Chunk neighborChunk = this.pos.x == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[0, this.pos.y] : this.planet.chunks[this.pos.x + 1, this.pos.y];
+                    Chunk neighborChunk = this.normalizedPos.x == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[0, this.normalizedPos.y] : this.planet.chunks[this.normalizedPos.x + 1, this.normalizedPos.y];
 
                     if (neighborChunk == null) {
                         continue;
@@ -169,7 +168,7 @@ public class Chunk {
 
                 } else if (neighborPosInChunk.z == ChunkSize) {
 
-                    Chunk neighborChunk = this.pos.y == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[this.pos.x, 0] : this.planet.chunks[this.pos.x, this.pos.y + 1];
+                    Chunk neighborChunk = this.normalizedPos.y == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[this.normalizedPos.x, 0] : this.planet.chunks[this.normalizedPos.x, this.normalizedPos.y + 1];
 
                     if (neighborChunk == null) {
                         continue;
@@ -224,8 +223,8 @@ public class Chunk {
                 }
             }
             
-        } catch (Exception e) {
-            Debug.LogError("Error in Chunk AddVoxelDataToChunk: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk AddVoxelDataToChunk: " + ex.Message);
         }
     }
 
@@ -244,8 +243,8 @@ public class Chunk {
             this.mesh.RecalculateNormals();
             this.meshFilter.mesh = this.mesh;
 
-        } catch (Exception e) {
-            Debug.LogError("Error in Chunk CreateMesh: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk CreateMesh: " + ex.Message);
         }
     }
 
@@ -304,8 +303,8 @@ public class Chunk {
             
             vertexIndex += 4;
 
-        } catch (Exception e) {
-            Debug.LogError("Error in Chunk AddTexture: " + e.Message);
+        } catch (Exception ex) {
+            Debug.LogError("Error in Chunk AddTexture: " + ex.Message);
         }
     }
 
@@ -319,8 +318,25 @@ public class Chunk {
             this.planet.unusedChunkObjects.Enqueue(this.gameObject);
             this.gameObject = null;
             this.meshFilter.mesh = null;
-            this.stage = ChunkStage.MeshCreated;
-        
+            this.stage = ChunkStage.Disabled;
+
+            //if (this.modified) {
+            //    this.stage = ChunkStage.Disabled;
+            //} else {
+            //    this.stage = ChunkStage.Null;
+            //    this.ClearMeshData();
+            //    this.meshFilter = null;
+            //    this.meshRenderer = null;
+            //    this.mesh = null;
+            //    this.materials = null;
+            //    this.modifications.Clear();
+            //    this.structures.Clear();
+            //    this.data.blocks = null;
+            //    this.data = null;
+            //    this.planet.chunks[this.normalizedPos.x, this.normalizedPos.y] = null;
+            //    this.planet = null;
+            //}
+
         } catch (Exception ex) {
             Debug.LogError("Error in Chunk Disable: " + ex.Message);
         }
@@ -329,25 +345,21 @@ public class Chunk {
     /// <summary>
     /// Renders the chunk into view
     /// </summary>
-    /// <param name="pos"></param>
-    /// <param name="normalizedPos"></param>
-    public void Enable(Vector2Int pos, Vector2Int normalizedPos) {
+    public void Enable() {
         try {
 
-            if (this.gameObject == null) {
-                if (this.planet.unusedChunkObjects.Count > 0) {
-                    this.gameObject = planet.unusedChunkObjects.Dequeue();
-                } else {
-                    this.gameObject = UnityEngine.Object.Instantiate(this.planet.chunkPrefab);
-                }
+            if (this.planet.unusedChunkObjects.Count > 0) {
+                this.gameObject = planet.unusedChunkObjects.Dequeue();
+            } else {
+                this.gameObject = UnityEngine.Object.Instantiate(this.planet.chunkPrefab);
             }
 
             this.meshFilter = gameObject.GetComponent<MeshFilter>();
             this.meshRenderer = gameObject.GetComponent<MeshRenderer>();
 
             this.gameObject.transform.SetParent(planet.gameObject.transform);
-            this.gameObject.transform.position = new Vector3(pos.x * ChunkSize, 0, pos.y * ChunkSize);
-            this.gameObject.name = $"Chunk {normalizedPos.x}, {normalizedPos.y}";
+            this.gameObject.transform.position = new Vector3(this.pos.x * ChunkSize, 0, this.pos.y * ChunkSize);
+            this.gameObject.name = $"Chunk {this.normalizedPos.x}, {this.normalizedPos.y}";
             this.gameObject.SetActive(true);
 
             this.CreateMesh();
@@ -376,10 +388,15 @@ public class ChunkData {
     }
 }
 
+
+
 public enum ChunkStage {
     Null = 0,
-    DataPopulated = 1,
-    MeshCreated = 2,
-    StructuresGenerated = 3,
-    Rendered = 4
+    Populating = 1,
+    Populated = 2,
+    CreatingMesh = 3,
+    MeshCreated = 4,
+    Rendering = 5,
+    Rendered = 6,
+    Disabled = 7
 }

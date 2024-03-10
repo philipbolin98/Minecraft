@@ -235,39 +235,38 @@ public static class HelperFunctions {
         }
     }
 
-    public static bool CheckNeighboringChunks(Planet planet, Vector2Int chunkPos, Vector2Int[] neighborOffsets, ChunkStage stage) {
+    public static Chunk GetNeighboringChunk(Chunk chunk, Vector2Int offset) {
         try {
 
-            foreach (Vector2Int offset in neighborOffsets) {
-
-                Vector2Int newChunkPos = chunkPos + offset;
-
-                if (newChunkPos.x == planet.PlanetSizeInChunks) {
-                    newChunkPos.x = 0;
-                } else if (newChunkPos.x == -1) {
-                    newChunkPos.x = planet.PlanetSizeInChunks - 1;
-                }
-
-                if (newChunkPos.y == planet.PlanetSizeInChunks) {
-                    newChunkPos.y = 0;
-                } else if (newChunkPos.y == -1) {
-                    newChunkPos.y = planet.PlanetSizeInChunks - 1;
-                }
-
-                Chunk chunk = planet.chunks[newChunkPos.x, newChunkPos.y];
-
-                if (chunk == null || chunk.stage < stage) {
-                    return false;
-                }
-            }
-
-            return true;
+            Vector2Int neighborPos = NormalizeChunkPos(chunk.planet, chunk.normalizedPos + offset);
+            Chunk neighborChunk = chunk.planet.chunks[neighborPos.x, neighborPos.y];
+            return neighborChunk;
 
         } catch (Exception ex) {
-            Debug.LogError("Error in HelperFunctions CanChunkStructuresBeGenerated: " + ex.Message);
-            return false;
+            Debug.LogError("Error in HelperFunctions GetNeighboringChunk: " + ex.Message);
+            return null;
         }
     }
+
+    //public static bool CheckNeighboringChunks(Chunk chunk, Vector2Int[] neighborOffsets, ChunkStage stage) {
+    //    try {
+
+    //        foreach (Vector2Int offset in neighborOffsets) {
+
+    //            Chunk neighborChunk = GetNeighboringChunk(chunk, offset);
+
+    //            if (neighborChunk == null || neighborChunk.stage < stage) {
+    //                return false;
+    //            }
+    //        }
+
+    //        return true;
+
+    //    } catch (System.Exception ex) {
+    //        Debug.LogError("Error in HelperFunctions CheckNeighboringChunks: " + ex.Message);
+    //        return false;
+    //    }
+    //}
 
     /// <summary>
     /// Liang Barsky line clipping algorithm extrapolated to 3D

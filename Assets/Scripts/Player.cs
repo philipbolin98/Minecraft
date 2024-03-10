@@ -310,7 +310,7 @@ public class Player : MonoBehaviour {
     private void Fly() {
         try {
 
-            float speedModifier = (isSprinting ? sprintSpeed : walkSpeed) * 3;
+            float speedModifier = (isSprinting ? sprintSpeed : walkSpeed) * 8;
             velocity = speedModifier * Time.deltaTime * ((transform.forward * vertical) + (transform.right * horizontal));
 
             float ascent = ascentDirection * speedModifier * Time.deltaTime;
@@ -633,15 +633,16 @@ public class Player : MonoBehaviour {
             Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, Chunk.ChunkSize);
 
             chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
+            chunk.modified = true;
 
-            RegenerateMesh(chunk.pos);
+            RegenerateMesh(chunk.normalizedPos);
 
             if (blockPosInChunk.x == 0) {
-                RegenerateMesh(chunk.pos + Vector2Int.left);
+                RegenerateMesh(chunk.normalizedPos + Vector2Int.left);
             }
 
             if (blockPosInChunk.z == 0) {
-                RegenerateMesh(chunk.pos + Vector2Int.down);
+                RegenerateMesh(chunk.normalizedPos + Vector2Int.down);
             }
 
         } catch (Exception ex) {

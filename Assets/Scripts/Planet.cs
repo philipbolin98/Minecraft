@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
-using System.Linq;
 using System;
+using System.Collections.Concurrent;
 
 public class Planet : MonoBehaviour {
 
@@ -12,7 +12,7 @@ public class Planet : MonoBehaviour {
     public int PlanetSizeInVoxels;
     public int ViewDistanceInChunks;
     public int WorldHeight;
-    public float gravity = -40f;
+    public float gravity;
 
     public GameObject player;
     public GameObject chunkPrefab;
@@ -21,25 +21,24 @@ public class Planet : MonoBehaviour {
     public Biome[] biomes;
 
     public Chunk[,] chunks;
-    private List<Vector2Int> chunksInView = new();
+    public List<Chunk> activeChunks = new();
     public Queue<GameObject> unusedChunkObjects = new();
 
+    private EventWaitHandle populateChunksWaitHandle = new(false, EventResetMode.AutoReset);
+    private EventWaitHandle createChunkMeshesWaitHandle = new(false, EventResetMode.AutoReset);
+    private const int maxThreads = 8;
+    private Semaphore threadPoolSemaphore = new(maxThreads, maxThreads);
     private Thread chunkPopulateThread;
-    private Thread structureGenerateThread;
     private Thread meshCreationThread;
 
-    private List<Vector2Int> chunksToPopulate = new();
-    private object chunksToPopulateLock = new();
-
-    private List<Vector2Int> chunksToGenerateStructures = new();
-    private object chunksToGenerateStructuresLock = new();
-
-    [HideInInspector]
-    public List<Vector2Int> chunksToMesh = new();
-    public object chunksToMeshLock = new();
+    private ChunkQueue chunksToMesh = new();
+    private ConcurrentQueue<Chunk> chunksToPopulateQueue = new();
+    private ConcurrentQueue<Chunk> chunksToRenderQueue = new();
 
     [HideInInspector]
     public TerrainGenerator terrainGenerator;
+    [HideInInspector]
+    public StructureGenerator structureGenerator;
 
     public Material material;
     public Material transparentMaterial;
@@ -55,15 +54,16 @@ public class Planet : MonoBehaviour {
             this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
 
             this.seed = UnityEngine.Random.Range(0, int.MaxValue);
-            this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
-            this.terrainGenerator.Initialize(this.seed);
+            UnityEngine.Random.InitState(this.seed);
 
-            //TO DO: Implement wait handles for these 3 threads so that they are not running in infinite loops
+            this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
+            this.terrainGenerator.Initialize(this);
+
+            this.structureGenerator = GameObject.Find("StructureGenerator").GetComponent<StructureGenerator>();
+            this.structureGenerator.Initialize(this);
+
             this.chunkPopulateThread = new Thread(new ThreadStart(PopulateChunks));
             this.chunkPopulateThread.Start();
-
-            this.structureGenerateThread = new Thread(new ThreadStart(GenerateStructures));
-            this.structureGenerateThread.Start();
 
             this.meshCreationThread = new Thread(new ThreadStart(CreateChunkMeshes));
             this.meshCreationThread.Start();
@@ -81,6 +81,16 @@ public class Planet : MonoBehaviour {
     private void OnDisable() {
         try {
             gameRunning = false;
+            populateChunksWaitHandle.Set();
+            chunkPopulateThread.Join();
+            createChunkMeshesWaitHandle.Set();
+            meshCreationThread.Join();
+            Array.Clear(this.chunks, 0, this.chunks.Length);
+            this.chunksToPopulateQueue.Clear();
+            this.chunksToMesh.Clear();
+            this.chunksToRenderQueue.Clear();
+            this.activeChunks.Clear();
+            this.unusedChunkObjects.Clear();
         } catch (Exception ex) {
             Debug.LogError("Error in Planet OnDisable: " + ex.Message);
         }
@@ -97,20 +107,14 @@ public class Planet : MonoBehaviour {
             int minChunkZ = centerChunk.y - ViewDistanceInChunks;
             int maxChunkZ = centerChunk.y + ViewDistanceInChunks;
 
-            for (int i = this.chunksInView.Count - 1; i >= 0; i--) {
+            for (int i = this.activeChunks.Count - 1; i >= 0; i--) {
 
-                Vector2Int chunkPos = this.chunksInView[i];
+                Chunk chunk = this.activeChunks[i];
+                Vector2Int chunkPos = chunk.pos;
 
-                if (chunkPos.x <= minChunkX || chunkPos.x >= maxChunkX || chunkPos.y <= minChunkZ || chunkPos.y >= maxChunkZ) {
-
-                    this.chunksInView.Remove(chunkPos);
-
-                    Vector2Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y);
-                    Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
-
-                    if (chunk != null && chunk.stage == ChunkStage.Rendered) {
-                        chunk.Disable();
-                    }
+                if (chunkPos.x < minChunkX || chunkPos.x > maxChunkX || chunkPos.y < minChunkZ || chunkPos.y > maxChunkZ) {
+                    chunk.Disable();
+                    this.activeChunks.RemoveAt(i);
                 }
             }
 
@@ -131,21 +135,18 @@ public class Planet : MonoBehaviour {
                 Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
 
                 if (chunk == null) {
-                    chunk = new Chunk(this, normalizedChunkPos);
+                    chunk = new Chunk(this, chunkPos, normalizedChunkPos);
+                } else {
+                    chunk.pos = chunkPos;
                 }
 
-                if (chunk.stage == ChunkStage.Null && !chunksToPopulate.Contains(normalizedChunkPos)) {
-                    lock (chunksToPopulateLock) {
-                        chunksToPopulate.Add(normalizedChunkPos);
-                    }
-                }
-
-                //Only chunks within the inner radius should have their meshes created
-                if (chunkPos.x > minChunkX && chunkPos.x < maxChunkX && chunkPos.y > minChunkZ && chunkPos.y < maxChunkZ) {
-
-                    if (!chunksInView.Contains(chunkPos)) {
-                        chunksInView.Add(chunkPos);
-                    }
+                if (chunk.stage == ChunkStage.Null) {
+                    chunk.stage = ChunkStage.Populating;
+                    chunksToPopulateQueue.Enqueue(chunk);
+                    populateChunksWaitHandle.Set();
+                } else if (chunk.stage == ChunkStage.Disabled) {
+                    chunk.stage = ChunkStage.Rendering;
+                    chunksToRenderQueue.Enqueue(chunk);
                 }
             }
             
@@ -158,123 +159,95 @@ public class Planet : MonoBehaviour {
         while (gameRunning) {
             try {
 
-                if (chunksToPopulate.Count > 0) {
+                populateChunksWaitHandle.WaitOne();
 
-                    Vector2Int[] chunks = null;
-
-                    lock (chunksToPopulateLock) {
-                        chunks = chunksToPopulate.ToArray<Vector2Int>();
-                    }
-
-                    foreach (Vector2Int chunkPos in chunks) {
-                        Chunk chunk = this.chunks[chunkPos.x, chunkPos.y];
-                        chunk.Popuplate();
-
-                        lock (chunksToPopulateLock) {
-                            chunksToPopulate.Remove(chunkPos);
-                        }
-
-                        if (chunk.stage == ChunkStage.StructuresGenerated) {
-                            lock (chunksToMeshLock) {
-                                chunksToMesh.Add(chunkPos);
-                            }
-                        } else {
-                            lock (chunksToGenerateStructuresLock) {
-                                chunksToGenerateStructures.Add(chunkPos);
-                            }
-                        }
-                    }
+                while (gameRunning && chunksToPopulateQueue.Count > 0) {
+                    threadPoolSemaphore.WaitOne();
+                    chunksToPopulateQueue.TryDequeue(out Chunk chunk);
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(PopulateChunk), chunk);
                 }
 
             } catch (Exception ex) {
                 Debug.LogError("Error in Planet PopulateChunks: " + ex.Message);
             }
-
-            Thread.Sleep(10);
         }
     }
 
-    private void GenerateStructures() {
+    public void CreateChunkMeshes() {
         while (gameRunning) {
             try {
 
-                if (chunksToGenerateStructures.Count > 0) {
+                createChunkMeshesWaitHandle.WaitOne();
 
-                    List<Vector2Int> chunks = new();
-
-                    lock (chunksToGenerateStructuresLock) {
-                        
-                        for (int i = chunksToGenerateStructures.Count - 1; i >= 0; i--) {
-                            Vector2Int chunkPos = chunksToGenerateStructures[i];
-                            if (HelperFunctions.CheckNeighboringChunks(this, chunkPos, Chunk.NeighboringChunks, ChunkStage.DataPopulated)) {
-                                chunks.Add(chunkPos);
-                            }
-                        }
-                    }
-
-                    if (chunks.Count > 0) {
-
-                        foreach (Vector2Int chunkPos in chunks) {
-
-                            Chunk chunk = this.chunks[chunkPos.x, chunkPos.y];
-                            chunk.GenerateStructures();
-
-                            lock (chunksToGenerateStructuresLock) {
-                                chunksToGenerateStructures.Remove(chunkPos);
-                            }
-
-                            lock (chunksToMeshLock) {
-                                chunksToMesh.Add(chunkPos);
-                            }
-                        }
-                    }
-                }
-
-            } catch (Exception ex) {
-                Debug.LogError("Error in Planet GenerateStructures: " + ex.Message);
-            }
-
-            Thread.Sleep(10);
-        }
-    }
-
-    private void CreateChunkMeshes() {
-        while (gameRunning) {
-            try {
-
-                if (chunksToMesh.Count > 0) {
-
-                    List<Vector2Int> chunks = new();
-
-                    lock (chunksToMeshLock) {
-
-                        for (int i = chunksToMesh.Count - 1; i >= 0; i--) {
-                            Vector2Int chunkPos = chunksToMesh[i];
-                            if (HelperFunctions.CheckNeighboringChunks(this, chunkPos, Chunk.NeighboringChunks, ChunkStage.StructuresGenerated)) {
-                                chunks.Add(chunkPos);
-                            }
-                        }
-                    }
-
-                    if (chunks.Count > 0) {
-
-                        foreach (Vector2Int chunkPos in chunks) {
-
-                            Chunk chunk = this.chunks[chunkPos.x, chunkPos.y];
-                            chunk.CreateMeshData();
-
-                            lock (chunksToMeshLock) {
-                                chunksToMesh.Remove(chunkPos);
-                            }
-                        }
-                    }
+                while (gameRunning && chunksToMesh.Count > 0) {
+                    threadPoolSemaphore.WaitOne();
+                    chunksToMesh.TryDequeue(out Chunk chunk);
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(CreateChunkMesh), chunk);
                 }
 
             } catch (Exception ex) {
                 Debug.LogError("Error in Planet CreateChunkMeshes: " + ex.Message);
             }
+        }
+    }
 
-            Thread.Sleep(10);
+    public static void PopulateChunk(object obj) {
+        try {
+
+            Chunk chunk = (Chunk)obj;
+            chunk.Popuplate();
+
+            Chunk upChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.up);
+            if (upChunk != null && upChunk.stage >= ChunkStage.Populated) {
+                Chunk rightChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.right);
+                if (rightChunk != null && rightChunk.stage >= ChunkStage.Populated) {
+                    if (chunk.planet.chunksToMesh.TryEnqueue(chunk)) {
+                        chunk.stage = ChunkStage.CreatingMesh;
+                        chunk.planet.createChunkMeshesWaitHandle.Set();
+                    }
+                }
+            }
+
+            Chunk leftChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.left);
+            if (leftChunk != null && leftChunk.stage == ChunkStage.Populated) {
+                Chunk leftUpChunk = HelperFunctions.GetNeighboringChunk(leftChunk, Vector2Int.up);
+                if (leftUpChunk != null && leftUpChunk.stage >= ChunkStage.Populated) {
+                    if (leftChunk.planet.chunksToMesh.TryEnqueue(leftChunk)) {
+                        leftChunk.stage = ChunkStage.CreatingMesh;
+                        leftChunk.planet.createChunkMeshesWaitHandle.Set();
+                    }
+                }
+            }
+
+            Chunk downChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.down);
+            if (downChunk != null && downChunk.stage == ChunkStage.Populated) {
+                Chunk downRightChunk = HelperFunctions.GetNeighboringChunk(downChunk, Vector2Int.right);
+                if (downRightChunk != null && downRightChunk.stage >= ChunkStage.Populated) {
+                    if (downChunk.planet.chunksToMesh.TryEnqueue(downChunk)) {
+                        downChunk.stage = ChunkStage.CreatingMesh;
+                        downChunk.planet.createChunkMeshesWaitHandle.Set();
+                    }
+                }
+            }
+
+            chunk.planet.threadPoolSemaphore.Release();
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Planet PopulateChunk: " + ex.Message);
+        }
+    }
+
+    public static void CreateChunkMesh(object obj) {
+        try {
+
+            Chunk chunk = (Chunk)obj;
+            chunk.CreateMeshData();
+            chunk.stage = ChunkStage.Rendering;
+            chunk.planet.chunksToRenderQueue.Enqueue(chunk);
+            chunk.planet.threadPoolSemaphore.Release();
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Planet CreateChunkMesh: " + ex.Message);
         }
     }
 
@@ -285,13 +258,10 @@ public class Planet : MonoBehaviour {
     public void RenderChunks() {
         try {
 
-            foreach (Vector2Int chunkPos in this.chunksInView) {
-                Vector2Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y);
-                Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
-
-                if (chunk.stage == ChunkStage.MeshCreated) {
-                    chunk.Enable(chunkPos, normalizedChunkPos);
-                }
+            while (this.chunksToRenderQueue.Count > 0) {
+                this.chunksToRenderQueue.TryDequeue(out Chunk chunk);
+                chunk.Enable();
+                this.activeChunks.Add(chunk);
             }
 
         } catch (Exception ex) {
@@ -335,6 +305,69 @@ public class ChunkComparer : IComparer<Vector2Int> {
             } else {
                 return 0;
             }
+        }
+    }
+}
+
+public class ChunkQueue {
+    readonly List<Chunk> queue = new();
+    readonly HashSet<Vector2Int> set = new();
+    readonly object lockObject = new();
+
+    public int Count {
+        get {
+            lock (lockObject) {
+                return set.Count;
+            }
+        }
+    }
+
+    public bool TryDequeue(out Chunk chunk) {
+        lock (lockObject) {
+            if (set.Count == 0) {
+                chunk = null;
+                return false;
+            } else {
+                chunk = queue[0];
+                queue.RemoveAt(0);
+                set.Remove(chunk.normalizedPos);
+                return true;
+            }
+        }
+    }
+
+    public bool TryEnqueue(Chunk chunk) {
+        lock (lockObject) {
+            if (set.Add(chunk.normalizedPos)) {
+                queue.Add(chunk);
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    //public bool TryRemove(Vector2Int chunkPos) {
+    //    lock (lockObject) {
+    //        if (set.Remove(chunkPos)) {
+    //            int index = queue.IndexOf(chunkPos);
+    //            return true;
+    //        } else {
+    //            return false;
+    //        }
+    //    }
+    //}
+
+    public bool Contains(Chunk chunk) {
+        lock (lockObject) {
+            return set.Contains(chunk.normalizedPos);
+        }
+    }
+
+    public void Clear() {
+        lock (lockObject) {
+            queue.Clear();
+            set.Clear();
         }
     }
 }
