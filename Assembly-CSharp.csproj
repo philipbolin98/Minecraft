@@ -64,6 +64,7 @@
     <Compile Include="Assets\Scripts\FastNoiseLite.cs" />
     <Compile Include="Assets\Scripts\StructureGenerator.cs" />
     <Compile Include="Assets\Scripts\Block.cs" />
+    <Compile Include="Assets\Scripts\Menu.cs" />
     <Compile Include="Assets\Scripts\HelperFunctions.cs" />
     <Compile Include="Assets\Scripts\Biome.cs" />
     <Compile Include="Assets\Scripts\Inventory.cs" />

@@ -30,7 +30,7 @@ public class TerrainGenerator : MonoBehaviour {
         try {
 
             this.planet = planet;
-            this.FastNoise = new FastNoiseLite(planet.seed);
+            this.FastNoise = new FastNoiseLite(Planet.seed);
             this.FastNoise.SetNoiseType(FastNoiseLite.NoiseType.ValueCubic);
 
             this.torusCenterRadius = planet.PlanetSizeInChunks * 4;

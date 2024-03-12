@@ -12,7 +12,7 @@ public class StructureGenerator : MonoBehaviour {
         try {
 
             this.planet = planet;
-            this.FastNoise = new FastNoiseLite(planet.seed);
+            this.FastNoise = new FastNoiseLite(Planet.seed);
             this.FastNoise.SetNoiseType(FastNoiseLite.NoiseType.ValueCubic);
 
             this.StructureMap.Add(StructureID.OakTree, new Structure(Structure.tree, "OakTree"));

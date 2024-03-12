@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 
 public class Planet : MonoBehaviour {
 
-    public int seed;
+    public static int seed;
     public int PlanetSizeInChunks;
     [HideInInspector]
     public int PlanetSizeInVoxels;
@@ -53,13 +53,12 @@ public class Planet : MonoBehaviour {
 
             this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
 
-            this.seed = UnityEngine.Random.Range(0, int.MaxValue);
-            UnityEngine.Random.InitState(this.seed);
+            UnityEngine.Random.InitState(Planet.seed);
 
-            this.terrainGenerator = GameObject.Find("TerrainGenerator").GetComponent<TerrainGenerator>();
+            this.terrainGenerator = this.gameObject.GetComponent<TerrainGenerator>();
             this.terrainGenerator.Initialize(this);
 
-            this.structureGenerator = GameObject.Find("StructureGenerator").GetComponent<StructureGenerator>();
+            this.structureGenerator = this.gameObject.GetComponent<StructureGenerator>();
             this.structureGenerator.Initialize(this);
 
             this.chunkPopulateThread = new Thread(new ThreadStart(PopulateChunks));
