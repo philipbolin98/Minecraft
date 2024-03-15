@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class Menu : MonoBehaviour {
 
@@ -10,15 +12,53 @@ public class Menu : MonoBehaviour {
     public GameObject loadGameMenu;
     public GameObject settingsMenu;
     public TextMeshProUGUI seedInput;
+    public Slider renderDistanceSlider;
+    public Slider mouseSensitivitySlider;
 
     public void Start() {
         try {
 
-            //mainMenu = GameObject.Find("Main Menu");
-            //settings = GameObject.Find("Settings");
+            LoadSettingsJson();
 
         } catch (Exception ex) {
             Debug.LogError("Error in Menu Start: " + ex.Message);
+        }
+    }
+
+    public void LoadSettingsJson() {
+        try {
+
+            if (!File.Exists(Settings.settingsPath)) {
+
+                Settings.gameSettings = new GameSettings() {
+                    renderDistance = DefaultGameSettings.renderDistance,
+                    mouseSensitivity = DefaultGameSettings.mouseSensitivity
+                };
+
+                SaveSettingsJson();
+
+            } else {
+
+                string json = File.ReadAllText(Settings.settingsPath);
+                Settings.gameSettings = JsonUtility.FromJson<GameSettings>(json);
+            }
+
+            renderDistanceSlider.value = Settings.gameSettings.renderDistance;
+            mouseSensitivitySlider.value = Settings.gameSettings.mouseSensitivity;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Menu LoadSettingsJson: " + ex.Message);
+        }
+    }
+
+    public void SaveSettingsJson() {
+        try {
+
+            string json = JsonUtility.ToJson(Settings.gameSettings);
+            File.WriteAllText(Settings.settingsPath, json);
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Menu SaveSettingsJson: " + ex.Message);
         }
     }
 
@@ -82,4 +122,26 @@ public class Menu : MonoBehaviour {
             Debug.LogError("Error in Menu CreateNewWorld: " + ex.Message);
         }
     }
+
+    public void UpdateSetting(string settingName) {
+        try {
+
+            switch (settingName.ToLower()) {
+                case "renderdistance":
+                    Settings.gameSettings.renderDistance = (int)renderDistanceSlider.value;
+                    break;
+                case "mousesensitivity":
+                    Settings.gameSettings.mouseSensitivity = (int)mouseSensitivitySlider.value;
+                    break;
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Menu UpdateSetting: " + ex.Message);
+        }
+    }
+}
+
+public class GameSettings {
+    public int renderDistance;
+    public float mouseSensitivity;
 }

@@ -10,7 +10,6 @@ public class Planet : MonoBehaviour {
     public int PlanetSizeInChunks;
     [HideInInspector]
     public int PlanetSizeInVoxels;
-    public int ViewDistanceInChunks;
     public int WorldHeight;
     public float gravity;
 
@@ -26,8 +25,7 @@ public class Planet : MonoBehaviour {
 
     private EventWaitHandle populateChunksWaitHandle = new(false, EventResetMode.AutoReset);
     private EventWaitHandle createChunkMeshesWaitHandle = new(false, EventResetMode.AutoReset);
-    private const int maxThreads = 8;
-    private Semaphore threadPoolSemaphore = new(maxThreads, maxThreads);
+    private Semaphore threadPoolSemaphore = new(Settings.maxThreadPoolThreads, Settings.maxThreadPoolThreads);
     private Thread chunkPopulateThread;
     private Thread meshCreationThread;
 
@@ -100,11 +98,11 @@ public class Planet : MonoBehaviour {
 
             Vector2Int centerChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.z));
 
-            int minChunkX = centerChunk.x - ViewDistanceInChunks;
-            int maxChunkX = centerChunk.x + ViewDistanceInChunks;
+            int minChunkX = centerChunk.x - Settings.gameSettings.renderDistance;
+            int maxChunkX = centerChunk.x + Settings.gameSettings.renderDistance;
 
-            int minChunkZ = centerChunk.y - ViewDistanceInChunks;
-            int maxChunkZ = centerChunk.y + ViewDistanceInChunks;
+            int minChunkZ = centerChunk.y - Settings.gameSettings.renderDistance;
+            int maxChunkZ = centerChunk.y + Settings.gameSettings.renderDistance;
 
             for (int i = this.activeChunks.Count - 1; i >= 0; i--) {
 

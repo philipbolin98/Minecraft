@@ -23,7 +23,6 @@ public class Player : MonoBehaviour {
     private Transform cam;
     private Planet planet;
 
-    private float mouseSensitivity = 3f;
     private static float playerRadius = .25f;
     private static float playerStandHeight = 1.8f;
     private static float playerCrouchHeight = 1.4f;
@@ -129,8 +128,8 @@ public class Player : MonoBehaviour {
             vertical = Input.GetAxis("Vertical"); //W and S keys
 
             //Set rotation based on mouse movement
-            rotationY += Input.GetAxis("Mouse X") * mouseSensitivity;
-            rotationX -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+            rotationY += Input.GetAxis("Mouse X") * Settings.gameSettings.mouseSensitivity;
+            rotationX -= Input.GetAxis("Mouse Y") * Settings.gameSettings.mouseSensitivity;
             rotationX = Mathf.Clamp(rotationX, -90f, 90f);
 
             isSprinting = Input.GetButton("Sprint");

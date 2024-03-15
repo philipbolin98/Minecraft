@@ -65,26 +65,16 @@ public class StructureGenerator : MonoBehaviour {
             int maxChunkZ = minChunkZ + Chunk.ChunkSize - 1;
 
             foreach (Tuple<Vector3Int, BlockID> block in structure.blocks) {
-
-                Vector3Int pos = block.Item1;
                 
-                int y = terrainHeight + pos.y;
+                Vector3Int blockPosInPlanet = HelperFunctions.NormalizeBlockPos(blockXInPlanet + block.Item1.x, terrainHeight + block.Item1.y, blockZInPlanet + block.Item1.z, this.planet.PlanetSizeInVoxels);
 
-                if (y < this.planet.WorldHeight) {
+                if (blockPosInPlanet.y < this.planet.WorldHeight && blockPosInPlanet.x >= minChunkX && blockPosInPlanet.x <= maxChunkX && blockPosInPlanet.z >= minChunkZ && blockPosInPlanet.z <= maxChunkZ) {
 
-                    int x = blockXInPlanet + pos.x;
-                    int z = blockZInPlanet + pos.z;
+                    Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, Chunk.ChunkSize);
+                    BlockID currentBlockID = chunkToModify.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z];
 
-                    if (x >= minChunkX && x <= maxChunkX && z >= minChunkZ && z <= maxChunkZ) {
-
-                        int blockXInChunk = (int)HelperFunctions.Modulo(x, Chunk.ChunkSize);
-                        int blockZInChunk = (int)HelperFunctions.Modulo(z, Chunk.ChunkSize);
-                        BlockID currentBlockID = chunkToModify.data.blocks[blockXInChunk, y, blockZInChunk];
-
-                        if (currentBlockID == BlockID.Air) {
-                            BlockID blockID = block.Item2;
-                            chunkToModify.data.blocks[blockXInChunk, y, blockZInChunk] = blockID;
-                        }
+                    if (currentBlockID == BlockID.Air) {
+                        chunkToModify.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = block.Item2;
                     }
                 }
             }
