@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class Menu : MonoBehaviour {
+public class MainMenu : MonoBehaviour {
 
     public GameObject mainMenu;
     public GameObject newGameMenu;
@@ -81,20 +81,27 @@ public class Menu : MonoBehaviour {
 
             switch (menuName.ToLower()) {
                 case "main":
+
                     mainMenu.SetActive(true);
+                    settingsMenu.SetActive(false);
                     newGameMenu.SetActive(false);
                     loadGameMenu.SetActive(false);
-                    settingsMenu.SetActive(false);
                     break;
+
                 case "newgame":
+
                     mainMenu.SetActive(false);
                     newGameMenu.SetActive(true);
                     break;
+
                 case "loadgame":
+
                     mainMenu.SetActive(false);
                     loadGameMenu.SetActive(true);
                     break;
+
                 case "settings":
+
                     mainMenu.SetActive(false);
                     settingsMenu.SetActive(true);
                     break;

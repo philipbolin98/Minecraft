@@ -348,21 +348,25 @@ public class Chunk {
     public void Enable() {
         try {
 
-            if (this.planet.unusedChunkObjects.Count > 0) {
-                this.gameObject = planet.unusedChunkObjects.Dequeue();
-            } else {
-                this.gameObject = UnityEngine.Object.Instantiate(this.planet.chunkPrefab);
+            if (this.gameObject == null) {
+
+                if (this.planet.unusedChunkObjects.Count > 0) {
+                    this.gameObject = planet.unusedChunkObjects.Dequeue();
+                } else {
+                    this.gameObject = UnityEngine.Object.Instantiate(this.planet.chunkPrefab);
+                }
+
+                this.meshFilter = gameObject.GetComponent<MeshFilter>();
+                this.meshRenderer = gameObject.GetComponent<MeshRenderer>();
+
+                this.gameObject.transform.SetParent(planet.gameObject.transform);
+                this.gameObject.transform.position = new Vector3(this.pos.x * ChunkSize, 0, this.pos.y * ChunkSize);
+                this.gameObject.name = $"Chunk {this.normalizedPos.x}, {this.normalizedPos.y}";
+                this.gameObject.SetActive(true);
+
+                this.CreateMesh();
             }
-
-            this.meshFilter = gameObject.GetComponent<MeshFilter>();
-            this.meshRenderer = gameObject.GetComponent<MeshRenderer>();
-
-            this.gameObject.transform.SetParent(planet.gameObject.transform);
-            this.gameObject.transform.position = new Vector3(this.pos.x * ChunkSize, 0, this.pos.y * ChunkSize);
-            this.gameObject.name = $"Chunk {this.normalizedPos.x}, {this.normalizedPos.y}";
-            this.gameObject.SetActive(true);
-
-            this.CreateMesh();
+            
             this.stage = ChunkStage.Rendered;
 
         } catch (Exception ex) {

@@ -70,7 +70,7 @@ public class StructureGenerator : MonoBehaviour {
 
                 if (blockPosInPlanet.y < this.planet.WorldHeight && blockPosInPlanet.x >= minChunkX && blockPosInPlanet.x <= maxChunkX && blockPosInPlanet.z >= minChunkZ && blockPosInPlanet.z <= maxChunkZ) {
 
-                    Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, Chunk.ChunkSize);
+                    Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet, Chunk.ChunkSize);
                     BlockID currentBlockID = chunkToModify.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z];
 
                     if (currentBlockID == BlockID.Air) {

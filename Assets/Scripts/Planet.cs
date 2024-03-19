@@ -12,7 +12,12 @@ public class Planet : MonoBehaviour {
     public int PlanetSizeInVoxels;
     public int WorldHeight;
     public float gravity;
+    public float terminalVelocity;
 
+    public GameObject gameUI;
+    public GameObject pauseMenu;
+    public GameObject settingsMenu;
+   
     public GameObject player;
     public GameObject chunkPrefab;
     public Vector3 spawnPosition;
@@ -42,10 +47,20 @@ public class Planet : MonoBehaviour {
     public Material transparentMaterial;
     public Material waterMaterial;
 
+    public bool gamePaused = false;
     private bool gameRunning = true;
+
+    public Mesh targetedBlockMesh;
 
     private void Start() {
         try {
+
+            if (Settings.gameSettings == null) {
+                Settings.gameSettings = new GameSettings() {
+                    renderDistance = DefaultGameSettings.renderDistance,
+                    mouseSensitivity = DefaultGameSettings.mouseSensitivity
+                };
+            }
 
             this.PlanetSizeInVoxels = PlanetSizeInChunks * Chunk.ChunkSize;
 
@@ -264,7 +279,36 @@ public class Planet : MonoBehaviour {
         } catch (Exception ex) {
             Debug.LogError("Error in Planet GenerateChunks: " + ex.Message);
         }
-    }  
+    }
+
+    public void PauseGame() {
+        try {
+
+            this.gamePaused = true;
+            this.gameUI.SetActive(false);
+            this.pauseMenu.SetActive(true);
+
+            Cursor.lockState = CursorLockMode.None;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Planet PauseGame: " + ex.Message);
+        }
+    }
+
+    public void ResumeGame() {
+        try {
+
+            this.gamePaused = false;
+            this.gameUI.SetActive(true);
+            this.pauseMenu.SetActive(false);
+            this.settingsMenu.SetActive(false);
+
+            Cursor.lockState = CursorLockMode.Locked;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Planet ResumeGame: " + ex.Message);
+        }
+    }
 }
 
 public class ChunkComparer : IComparer<Vector2Int> {

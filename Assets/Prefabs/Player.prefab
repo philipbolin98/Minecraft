@@ -51,6 +51,8 @@ MonoBehaviour:
   jumpForce: 5
   reach: 5
   velocity: {x: 0, y: 0, z: 0}
+  highlightBlockPrefab: {fileID: 8692462097555671716, guid: 5b9c8889df4c7814490e650b69ee0ce6, type: 3}
+  breakPos: {x: 0, y: 0, z: 0}
 --- !u!1 &2739253966453547233
 GameObject:
   m_ObjectHideFlags: 0

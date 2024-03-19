@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -17,7 +19,6 @@ public class Player : MonoBehaviour {
     private bool isSprinting = false;
     private bool isCrouching = false;
     private bool spectatorMode = false;
-    private bool showHighlightBlocks = false;
     private Vector2Int currentChunk;
 
     private Transform cam;
@@ -30,13 +31,14 @@ public class Player : MonoBehaviour {
 
     private float horizontal;
     private float vertical;
-    private float rotationY = 0f;
-    private float rotationX = 0f;
+    private float rotationY;
+    private float rotationX;
 
     [SerializeField]
     private Vector3 velocity;
     private Vector3 currentPosition;
 
+    public const float minVerticalMomentum = -3;
     private float verticalMomentum = 0;
     private int ascentDirection = 0;
     private bool jumpRequest = false;
@@ -44,11 +46,11 @@ public class Player : MonoBehaviour {
     private TextMeshProUGUI playerBlockCoordsUI;
     private TextMeshProUGUI playerChunkCoordsUI;
 
-    private GameObject breakHighlightBlock;
-    private GameObject placeHighlightBlock;
-    
+    public GameObject highlightBlockPrefab;
+    private BlockOutline blockOutline;
+
     private bool canBreakBlock = false;
-    private Vector3Int breakPos;
+    public Vector3Int breakPos;
 
     private bool canPlaceBlock = false;
     private Vector3Int placePos;
@@ -60,8 +62,8 @@ public class Player : MonoBehaviour {
             planet = GameObject.Find("Planet").GetComponent<Planet>();
             playerBlockCoordsUI = GameObject.Find("PlayerBlockCoords").GetComponent<TextMeshProUGUI>();
             playerChunkCoordsUI = GameObject.Find("PlayerChunkCoords").GetComponent<TextMeshProUGUI>();
-            breakHighlightBlock = GameObject.Find("HighlightBlock");
-            placeHighlightBlock = GameObject.Find("PlaceBlock");
+
+            blockOutline = new(this.highlightBlockPrefab);
 
             inventory = new Inventory(planet);
 
@@ -78,30 +80,34 @@ public class Player : MonoBehaviour {
     private void FixedUpdate() {
         try {
 
-            if (spectatorMode) {
-                Fly();
-            } else {
-                MovePlayer();
-                if (jumpRequest) {
-                    Jump();
+            if (!this.planet.gamePaused) {
+
+                if (spectatorMode) {
+                    Fly();
+                } else {
+                    MovePlayer();
+                    if (jumpRequest) {
+                        Jump();
+                    }
                 }
-            }
 
-            transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotationY, transform.eulerAngles.z);
-            cam.eulerAngles = new Vector3(rotationX, cam.eulerAngles.y, cam.eulerAngles.z);
+                transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotationY, transform.eulerAngles.z);
+                cam.eulerAngles = new Vector3(rotationX, cam.eulerAngles.y, cam.eulerAngles.z);
 
-            transform.position = currentPosition;
+                transform.position = currentPosition;
 
-            Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
+                Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
 
-            if (newChunk.x != this.currentChunk.x || newChunk.y != this.currentChunk.y) {
-                this.currentChunk = newChunk;
-                this.planet.CheckRenderDistance(currentPosition);
+                if (newChunk.x != this.currentChunk.x || newChunk.y != this.currentChunk.y) {
+                    this.currentChunk = newChunk;
+                    this.planet.CheckRenderDistance(currentPosition);
+                }
+
+                this.UpdateDebugUI();
             }
 
             this.planet.RenderChunks();
-            this.UpdateDebugUI();
-
+            
         } catch (Exception ex) {
             Debug.LogError("Error in Player FixedUpdate: " + ex.Message);
         }
@@ -124,6 +130,19 @@ public class Player : MonoBehaviour {
     private void GetPlayerInputs() {
         try {
 
+            //Escape to pause or resume the game
+            if (Input.GetKeyDown(KeyCode.Escape)) {
+                if (this.planet.gamePaused) {
+                    this.planet.ResumeGame();
+                } else {
+                    this.planet.PauseGame();
+                }
+            }
+
+            if (this.planet.gamePaused) {
+                return;
+            }
+
             horizontal = Input.GetAxis("Horizontal"); //A and D keys
             vertical = Input.GetAxis("Vertical"); //W and S keys
 
@@ -137,32 +156,6 @@ public class Player : MonoBehaviour {
             //F1 to enable spectator mode for debugging purposes
             if (Input.GetKeyDown(KeyCode.F1)) {
                 spectatorMode = !spectatorMode;
-            }
-
-            //F2 to show/hide the highlight blocks
-            if (Input.GetKeyDown(KeyCode.F2)) {
-                showHighlightBlocks = !showHighlightBlocks;
-
-                if (showHighlightBlocks) {
-                    if (canBreakBlock) {
-
-                        breakHighlightBlock.transform.position = breakPos;
-                        breakHighlightBlock.SetActive(true);
-
-                        if (canPlaceBlock) {
-                            placeHighlightBlock.transform.position = placePos;
-                            placeHighlightBlock.SetActive(true);
-                        }
-                    }
-                } else {
-                    if (breakHighlightBlock.activeSelf) {
-                        breakHighlightBlock.SetActive(false);
-                    }
-
-                    if (placeHighlightBlock.activeSelf) {
-                        placeHighlightBlock.SetActive(false);
-                    }
-                }
             }
 
             if (spectatorMode) {
@@ -191,7 +184,7 @@ public class Player : MonoBehaviour {
 
             //F12 to reload the game for debugging purposes
             if (Input.GetKeyDown(KeyCode.F12)) {
-                SceneManager.LoadScene("SampleScene");
+                SceneManager.LoadScene("Planet");
             }
 
             //On left click, break the block at the targeted location
@@ -225,7 +218,7 @@ public class Player : MonoBehaviour {
         try {
 
             //Apply gravity to vertical momentum
-            if (verticalMomentum > this.planet.gravity) {
+            if (verticalMomentum > this.planet.terminalVelocity) {
                 verticalMomentum += Time.fixedDeltaTime * this.planet.gravity;
             }
 
@@ -252,6 +245,7 @@ public class Player : MonoBehaviour {
                 if (CheckSide(nextPosition, Block.BlockFace.Bottom)) {
                     nextPosition.y = Mathf.CeilToInt(nextPosition.y + velocity.y);
                     velocity.y = 0;
+                    verticalMomentum = minVerticalMomentum;
                     isGrounded = true;
                 } else {
                     nextPosition.y += velocity.y;
@@ -309,6 +303,8 @@ public class Player : MonoBehaviour {
     private void Fly() {
         try {
 
+            verticalMomentum = minVerticalMomentum;
+
             float speedModifier = (isSprinting ? sprintSpeed : walkSpeed) * 8;
             velocity = speedModifier * Time.deltaTime * ((transform.forward * vertical) + (transform.right * horizontal));
 
@@ -341,32 +337,32 @@ public class Player : MonoBehaviour {
                 case Block.BlockFace.Right:
                     minX = Mathf.FloorToInt(pos.x + velocity.x + playerRadius);
                     maxX = minX + 1;
-                    minY = Mathf.FloorToInt(currentPosition.y);
-                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minY = Mathf.FloorToInt(pos.y);
+                    maxY = Mathf.CeilToInt(pos.y + playerHeight - 1) + 1;
                     minZ = Mathf.FloorToInt(pos.z - playerRadius);
                     maxZ = Mathf.CeilToInt(pos.z + playerRadius);
                     break;
                 case Block.BlockFace.Left:
                     minX = Mathf.FloorToInt(pos.x + velocity.x - playerRadius);
                     maxX = minX + 1;
-                    minY = Mathf.FloorToInt(currentPosition.y);
-                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minY = Mathf.FloorToInt(pos.y);
+                    maxY = Mathf.CeilToInt(pos.y + playerHeight - 1) + 1;
                     minZ = Mathf.FloorToInt(pos.z - playerRadius);
                     maxZ = Mathf.CeilToInt(pos.z + playerRadius);
                     break;
                 case Block.BlockFace.Front:
                     minX = Mathf.FloorToInt(pos.x - playerRadius);
                     maxX = Mathf.CeilToInt(pos.x + playerRadius);
-                    minY = Mathf.FloorToInt(currentPosition.y);
-                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minY = Mathf.FloorToInt(pos.y);
+                    maxY = Mathf.CeilToInt(pos.y + playerHeight - 1) + 1;
                     minZ = Mathf.FloorToInt(pos.z + velocity.z + playerRadius);
                     maxZ = minZ + 1;
                     break;
                 case Block.BlockFace.Back:
                     minX = Mathf.FloorToInt(pos.x - playerRadius);
                     maxX = Mathf.CeilToInt(pos.x + playerRadius);
-                    minY = Mathf.FloorToInt(currentPosition.y);
-                    maxY = Mathf.CeilToInt(currentPosition.y + playerHeight - 1) + 1;
+                    minY = Mathf.FloorToInt(pos.y);
+                    maxY = Mathf.CeilToInt(pos.y + playerHeight - 1) + 1;
                     minZ = Mathf.FloorToInt(pos.z + velocity.z - playerRadius);
                     maxZ = minZ + 1;
                     break;
@@ -460,6 +456,10 @@ public class Player : MonoBehaviour {
     private void GetTargetedBlock() {
         try {
 
+            if (this.planet.gamePaused) {
+                return;
+            }
+
             Vector3Int camPos = Vector3Int.FloorToInt(cam.position);
             Vector3 startPos = cam.position;
             Vector3 endPos = startPos + cam.forward.normalized * reach;
@@ -467,39 +467,11 @@ public class Player : MonoBehaviour {
             canBreakBlock = GetTargetedBlockHelper(startPos, endPos, camPos);
 
             if (canBreakBlock) {
-
-                if (showHighlightBlocks) {
-                    if (breakHighlightBlock.transform.position != breakPos || !breakHighlightBlock.activeSelf) {
-                        breakHighlightBlock.transform.position = breakPos;
-                        breakHighlightBlock.SetActive(true);
-                    }
-                }
-                
                 canPlaceBlock = CanPlayerPlaceBlock();
-
-                if (showHighlightBlocks) {
-                    if (canPlaceBlock) {
-                        if (placeHighlightBlock.transform.position != placePos || !placeHighlightBlock.activeSelf) {
-                            placeHighlightBlock.transform.position = placePos;
-                            placeHighlightBlock.SetActive(true);
-                        }
-                    } else {
-                        if (placeHighlightBlock.activeSelf) {
-                            placeHighlightBlock.SetActive(false);
-                        }
-                    }
-                }
-                
+                this.blockOutline.Enable(breakPos, this.planet);
             } else {
-                if (showHighlightBlocks) {
-                    if (breakHighlightBlock.activeSelf) {
-                        breakHighlightBlock.SetActive(false);
-                    }
-
-                    if (placeHighlightBlock.activeSelf) {
-                        placeHighlightBlock.SetActive(false);
-                    }
-                }
+                canPlaceBlock = false;
+                this.blockOutline.Disable();
             }
                 
         } catch (Exception ex) {
@@ -623,13 +595,13 @@ public class Player : MonoBehaviour {
     private void EditBlock(Vector3Int blockPosInPlanet, BlockID blockID) {
         try {
 
-            Chunk chunk = HelperFunctions.GetChunkFromBlockPos(this.planet, blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z);
+            Chunk chunk = HelperFunctions.GetChunkFromBlockPos(this.planet, blockPosInPlanet);
 
             if (chunk == null || chunk.stage < ChunkStage.Rendered) {
                 return;
             }
 
-            Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, Chunk.ChunkSize);
+            Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet, Chunk.ChunkSize);
 
             chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
             chunk.modified = true;
@@ -665,6 +637,7 @@ public class Player : MonoBehaviour {
 
             chunk.CreateMeshData();
             chunk.CreateMesh();
+            chunk.Enable();
 
         } catch (Exception ex) {
             Debug.LogError("Error in Player PrepareChunkForEditing: " + ex.Message);

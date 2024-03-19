@@ -42,6 +42,17 @@ public static class HelperFunctions {
         }
     }
 
+    public static Vector3Int NormalizeBlockPos(Vector3Int pos, int maxVal) {
+        try {
+
+            return NormalizeBlockPos(pos.x, pos.y, pos.z, maxVal);
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in HelperFunctions NormalizeBlockPos: " + ex.Message);
+            return new Vector3Int();
+        }
+    }
+
     /// <summary>
     /// Gets the position of a chunk in the world in case of wrapping
     /// </summary>
@@ -217,14 +228,14 @@ public static class HelperFunctions {
         }
     }
 
-    public static Chunk GetChunkFromBlockPos(Planet planet, int blockX, int blockY, int blockZ) {
+    public static Chunk GetChunkFromBlockPos(Planet planet, Vector3Int blockPosInPlanet) {
         try {
             
-            if (!IsBlockInPlanet(planet, blockY)) {
+            if (!IsBlockInPlanet(planet, blockPosInPlanet.y)) {
                 return null;
             }
 
-            Vector3Int normalizedBlockPos = NormalizeBlockPos(blockX, blockY, blockZ, planet.PlanetSizeInVoxels);
+            Vector3Int normalizedBlockPos = NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, planet.PlanetSizeInVoxels);
             Vector2Int chunkPos = GetChunkPosFromBlockPos(normalizedBlockPos.x, normalizedBlockPos.z);
             Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
             return chunk;
