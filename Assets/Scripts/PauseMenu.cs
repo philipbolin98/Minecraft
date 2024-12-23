@@ -66,6 +66,7 @@ public class PauseMenu : MonoBehaviour {
     public void SaveAndQuit() {
         try {
 
+            SaveSystem.SavePlanet(this.planet);
             SceneManager.LoadScene("MainMenu");
 
         } catch (Exception ex) {

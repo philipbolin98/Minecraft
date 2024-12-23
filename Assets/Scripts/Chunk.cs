@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.XR;
 
 public class Chunk {
 
@@ -45,14 +44,16 @@ public class Chunk {
     /// <param name="planet"></param>
     /// <param name="pos"></param>
     /// <param name="normalizedPos"></param>
-    public Chunk(Planet planet, Vector2Int pos, Vector2Int normalizedPos) {
+    public Chunk(Planet planet, Vector2Int pos, Vector2Int normalizedPos, ChunkData data = null) {
         try {
 
             this.pos = pos;
             this.normalizedPos = normalizedPos;
             this.normalizedPosInBlocks = normalizedPos * ChunkSize;
             this.planet = planet;
-            this.data = new ChunkData(planet);
+
+            this.data = data != null ? data : new ChunkData(planet);
+
             planet.chunks[normalizedPos.x, normalizedPos.y] = this;
 
             this.materials[0] = planet.material;
@@ -375,7 +376,7 @@ public class Chunk {
     }
 }
 
-[System.Serializable]
+[Serializable]
 public class ChunkData {
 
     [HideInInspector]
@@ -391,8 +392,6 @@ public class ChunkData {
         }
     }
 }
-
-
 
 public enum ChunkStage {
     Null = 0,

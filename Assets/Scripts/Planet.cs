@@ -6,6 +6,8 @@ using System.Collections.Concurrent;
 
 public class Planet : MonoBehaviour {
 
+    public string planetName = "test";
+
     public static int seed;
     public int PlanetSizeInChunks;
     [HideInInspector]
@@ -26,6 +28,7 @@ public class Planet : MonoBehaviour {
 
     public Chunk[,] chunks;
     public List<Chunk> activeChunks = new();
+    public Dictionary<SerializableVector2Int, ChunkData> modifiedChunks = new();
     public Queue<GameObject> unusedChunkObjects = new();
 
     private EventWaitHandle populateChunksWaitHandle = new(false, EventResetMode.AutoReset);
@@ -62,9 +65,13 @@ public class Planet : MonoBehaviour {
                 };
             }
 
+            SaveSystem.LoadPlanet(this);
+
             this.PlanetSizeInVoxels = PlanetSizeInChunks * Chunk.ChunkSize;
 
             this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
+
+            LoadExistingChunks();
 
             UnityEngine.Random.InitState(Planet.seed);
 
@@ -87,6 +94,22 @@ public class Planet : MonoBehaviour {
 
         } catch (Exception ex) {
             Debug.LogError("Error in Planet Start: " + ex.Message);
+        }
+    }
+
+    public void LoadExistingChunks() {
+        try {
+
+            foreach (KeyValuePair<SerializableVector2Int, ChunkData> kvp in this.modifiedChunks) {
+                SerializableVector2Int serializablePos = kvp.Key;
+                Vector2Int pos = new Vector2Int(serializablePos.x, serializablePos.y);
+                ChunkData chunkData = kvp.Value;
+                Chunk chunk = new Chunk(this, pos, pos, chunkData);
+                chunk.stage = ChunkStage.Populated;
+            }
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in Planet LoadExistingChunks: " + ex.Message);
         }
     }
 
@@ -309,6 +332,34 @@ public class Planet : MonoBehaviour {
             Debug.LogError("Error in Planet ResumeGame: " + ex.Message);
         }
     }
+}
+
+[Serializable]
+public class PlanetData {
+
+    public int seed;
+    public string name;
+    public int sizeInChunks;
+    public Dictionary<SerializableVector2Int, ChunkData> modifiedChunks;
+
+    public PlanetData(Planet planet) {
+        try {
+
+            this.seed = Planet.seed;
+            this.name = planet.name;
+            this.sizeInChunks = planet.PlanetSizeInChunks;
+            this.modifiedChunks = planet.modifiedChunks;
+
+        } catch (Exception ex) {
+            Debug.LogError("Error in PlanetData Constructor: " + ex.Message);
+        }
+    }
+}
+
+[Serializable]
+public class SerializableVector2Int {
+    public int x;
+    public int y;
 }
 
 public class ChunkComparer : IComparer<Vector2Int> {

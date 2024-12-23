@@ -2,8 +2,8 @@
 
 public static class Settings {
     public static string appPath = Application.persistentDataPath;
-    public const string settingsJson = "settings.json";
-    public static string settingsPath = $"{appPath}/{settingsJson}";
+    public static string settingsPath = $"{appPath}/settings.json";
+    public static string savesPath = $"{appPath}/saves";
     public const int maxThreadPoolThreads = 8;
     public static GameSettings gameSettings;
 }

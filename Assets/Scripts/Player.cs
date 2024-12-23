@@ -606,6 +606,15 @@ public class Player : MonoBehaviour {
             chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
             chunk.modified = true;
 
+            SerializableVector2Int pos = new SerializableVector2Int() {
+                x = chunk.normalizedPos.x,
+                y = chunk.normalizedPos.y
+            };
+
+            if (!this.planet.modifiedChunks.ContainsKey(pos)) {
+                this.planet.modifiedChunks.Add(pos, chunk.data);
+            }
+
             RegenerateMesh(chunk.normalizedPos);
 
             if (blockPosInChunk.x == 0) {
