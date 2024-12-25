@@ -46,42 +46,42 @@ public class TerrainGenerator : MonoBehaviour {
     public void GenerateTerrain(Chunk chunk, int blockXInChunk, int blockZInChunk) {
         try {
 
-            Planet planet = chunk.planet;
-
             int blockXInPlanet = chunk.normalizedPosInBlocks.x + blockXInChunk;
-            int blockZInPlanet = chunk.normalizedPosInBlocks.y + blockZInChunk;
+            int blockZInPlanet = chunk.normalizedPosInBlocks.z + blockZInChunk;
 
             Biome biome = GetBiome(blockXInPlanet, blockZInPlanet);
             int terrainHeight = GetTerrainHeight(blockXInPlanet, blockZInPlanet, biome);
 
-            int maxY = Mathf.Max(terrainHeight, seaLevel) + 1;
-            maxY = Mathf.Min(maxY, planet.WorldHeight);
+            //int maxY = Mathf.Max(terrainHeight, seaLevel) + 1;
+            //maxY = Mathf.Min(maxY, chunk.normalizedPosInBlocks.y + Chunk.ChunkSize);
 
-            for (int y = 0; y < maxY; y++) {
+            for (int blockYInChunk = 0; blockYInChunk < Chunk.ChunkSize; blockYInChunk++) {
+
+                int blockYInPlanet = chunk.normalizedPosInBlocks.y + blockYInChunk;
 
                 BlockID blockID;
 
-                if (y > terrainHeight) {
-                    if (y < seaLevel) { //Water when above the surface but below sea level
+                if (blockYInPlanet > terrainHeight) {
+                    if (blockYInPlanet < seaLevel) { //Water when above the surface but below sea level
                         blockID = BlockID.Water;
                     } else { //Air when above the surface and above sea level
                         blockID = BlockID.Air;
                     }
-                } else if (y < 1) { //Bedrock for y = 0
+                } else if (blockYInPlanet < 1) { //Bedrock for y = 0
                     blockID = BlockID.Bedrock;
-                } else if (y == terrainHeight) {
-                    if (y < seaLevel) {
+                } else if (blockYInPlanet == terrainHeight) {
+                    if (blockYInPlanet < seaLevel) {
                         blockID = BlockID.Sand;
                     } else {
                         blockID = biome.surfaceBlock;
                     }
-                } else if (y > terrainHeight - 4) { //Dirt for next 3 layers
+                } else if (blockYInPlanet > terrainHeight - 4) { //Dirt for next 3 layers
                     blockID = BlockID.Dirt;
                 } else { //Everything else stone
                     blockID = BlockID.Stone;
                 }
 
-                chunk.data.blocks[blockXInChunk, y, blockZInChunk] = blockID;
+                chunk.data.blocks[blockXInChunk, blockYInChunk, blockZInChunk] = blockID;
             }
 
         } catch (Exception ex) {

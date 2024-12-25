@@ -19,7 +19,7 @@ public class Player : MonoBehaviour {
     private bool isSprinting = false;
     private bool isCrouching = false;
     private bool spectatorMode = false;
-    private Vector2Int currentChunk;
+    private Vector3Int currentChunk;
 
     private Transform cam;
     private Planet planet;
@@ -68,7 +68,7 @@ public class Player : MonoBehaviour {
             inventory = new Inventory(planet);
 
             currentPosition = transform.position;
-            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
+            currentChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
 
             Cursor.lockState = CursorLockMode.Locked;
 
@@ -96,9 +96,9 @@ public class Player : MonoBehaviour {
 
                 transform.position = currentPosition;
 
-                Vector2Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.z));
+                Vector3Int newChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(currentPosition.x), Mathf.FloorToInt(currentPosition.y), Mathf.FloorToInt(currentPosition.z));
 
-                if (newChunk.x != this.currentChunk.x || newChunk.y != this.currentChunk.y) {
+                if (newChunk.x != this.currentChunk.x || newChunk.y != this.currentChunk.y || newChunk.z != this.currentChunk.z) {
                     this.currentChunk = newChunk;
                     this.planet.CheckRenderDistance(currentPosition);
                 }
@@ -606,9 +606,10 @@ public class Player : MonoBehaviour {
             chunk.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z] = blockID;
             chunk.modified = true;
 
-            SerializableVector2Int pos = new SerializableVector2Int() {
+            SerializableVector3Int pos = new() {
                 x = chunk.normalizedPos.x,
-                y = chunk.normalizedPos.y
+                y = chunk.normalizedPos.y,
+                z = chunk.normalizedPos.z
             };
 
             if (!this.planet.modifiedChunks.ContainsKey(pos)) {
@@ -618,11 +619,15 @@ public class Player : MonoBehaviour {
             RegenerateMesh(chunk.normalizedPos);
 
             if (blockPosInChunk.x == 0) {
-                RegenerateMesh(chunk.normalizedPos + Vector2Int.left);
+                RegenerateMesh(chunk.normalizedPos + Vector3Int.left);
+            }
+
+            if (blockPosInChunk.y == 0 && chunk.normalizedPos.y > 0) {
+                RegenerateMesh(chunk.normalizedPos + Vector3Int.down);
             }
 
             if (blockPosInChunk.z == 0) {
-                RegenerateMesh(chunk.normalizedPos + Vector2Int.down);
+                RegenerateMesh(chunk.normalizedPos + Vector3Int.back);
             }
 
         } catch (Exception ex) {
@@ -634,11 +639,11 @@ public class Player : MonoBehaviour {
     /// Regenerates a chunk mesh when a block is placed or destroyed by a player
     /// </summary>
     /// <param name="chunkPos">The position of the chunk being edited</param>
-    private void RegenerateMesh(Vector2Int chunkPos) {
+    private void RegenerateMesh(Vector3Int chunkPos) {
         try {
 
             chunkPos = HelperFunctions.NormalizeChunkPos(this.planet, chunkPos);
-            Chunk chunk = this.planet.chunks[chunkPos.x, chunkPos.y];
+            Chunk chunk = this.planet.chunks[chunkPos.x, chunkPos.y, chunkPos.z];
 
             if (chunk == null) {
                 return;
@@ -649,7 +654,7 @@ public class Player : MonoBehaviour {
             chunk.Enable();
 
         } catch (Exception ex) {
-            Debug.LogError("Error in Player PrepareChunkForEditing: " + ex.Message);
+            Debug.LogError("Error in Player RegenerateMesh: " + ex.Message);
         }
     }
 }

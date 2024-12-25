@@ -12,7 +12,11 @@ public class Planet : MonoBehaviour {
     public int PlanetSizeInChunks;
     [HideInInspector]
     public int PlanetSizeInVoxels;
-    public int WorldHeight;
+
+    public int PlanetHeightInChunks;
+    [HideInInspector]
+    public int PlanetHeightInVoxels;
+
     public float gravity;
     public float terminalVelocity;
 
@@ -26,9 +30,9 @@ public class Planet : MonoBehaviour {
     public Block[] blockTypes;
     public Biome[] biomes;
 
-    public Chunk[,] chunks;
+    public Chunk[,,] chunks;
     public List<Chunk> activeChunks = new();
-    public Dictionary<SerializableVector2Int, ChunkData> modifiedChunks = new();
+    public Dictionary<SerializableVector3Int, ChunkData> modifiedChunks = new();
     public Queue<GameObject> unusedChunkObjects = new();
 
     private EventWaitHandle populateChunksWaitHandle = new(false, EventResetMode.AutoReset);
@@ -68,8 +72,9 @@ public class Planet : MonoBehaviour {
             SaveSystem.LoadPlanet(this);
 
             this.PlanetSizeInVoxels = PlanetSizeInChunks * Chunk.ChunkSize;
+            this.PlanetHeightInVoxels = PlanetHeightInChunks * Chunk.ChunkSize;
 
-            this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetSizeInChunks];
+            this.chunks = new Chunk[this.PlanetSizeInChunks, this.PlanetHeightInChunks, this.PlanetSizeInChunks];
 
             LoadExistingChunks();
 
@@ -100,9 +105,9 @@ public class Planet : MonoBehaviour {
     public void LoadExistingChunks() {
         try {
 
-            foreach (KeyValuePair<SerializableVector2Int, ChunkData> kvp in this.modifiedChunks) {
-                SerializableVector2Int serializablePos = kvp.Key;
-                Vector2Int pos = new Vector2Int(serializablePos.x, serializablePos.y);
+            foreach (KeyValuePair<SerializableVector3Int, ChunkData> kvp in this.modifiedChunks) {
+                SerializableVector3Int serializablePos = kvp.Key;
+                Vector3Int pos = new Vector3Int(serializablePos.x, serializablePos.y, serializablePos.z);
                 ChunkData chunkData = kvp.Value;
                 Chunk chunk = new Chunk(this, pos, pos, chunkData);
                 chunk.stage = ChunkStage.Populated;
@@ -134,40 +139,45 @@ public class Planet : MonoBehaviour {
     public void CheckRenderDistance(Vector3 pos) {
         try {
 
-            Vector2Int centerChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.z));
+            Vector3Int centerChunk = HelperFunctions.GetChunkPosFromBlockPos(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y), Mathf.FloorToInt(pos.z));
 
             int minChunkX = centerChunk.x - Settings.gameSettings.renderDistance;
             int maxChunkX = centerChunk.x + Settings.gameSettings.renderDistance;
 
-            int minChunkZ = centerChunk.y - Settings.gameSettings.renderDistance;
-            int maxChunkZ = centerChunk.y + Settings.gameSettings.renderDistance;
+            int minChunkY = Math.Max(centerChunk.y - Settings.gameSettings.renderDistance, 0);
+            int maxChunkY = Math.Min(centerChunk.y + Settings.gameSettings.renderDistance, this.PlanetHeightInChunks - 1);
+
+            int minChunkZ = centerChunk.z - Settings.gameSettings.renderDistance;
+            int maxChunkZ = centerChunk.z + Settings.gameSettings.renderDistance;
 
             for (int i = this.activeChunks.Count - 1; i >= 0; i--) {
 
                 Chunk chunk = this.activeChunks[i];
-                Vector2Int chunkPos = chunk.pos;
+                Vector3 chunkPos = chunk.pos;
 
-                if (chunkPos.x < minChunkX || chunkPos.x > maxChunkX || chunkPos.y < minChunkZ || chunkPos.y > maxChunkZ) {
+                if (chunkPos.x < minChunkX || chunkPos.x > maxChunkX || chunkPos.y < minChunkY || chunkPos.y > maxChunkY || chunkPos.z < minChunkZ || chunkPos.z > maxChunkZ) {
                     chunk.Disable();
                     this.activeChunks.RemoveAt(i);
                 }
             }
 
-            List<Vector2Int> chunks = new();
+            List<Vector3Int> chunks = new();
 
             //All chunks within the radius should populated
             for (int x = minChunkX; x <= maxChunkX; x++) {
-                for (int z = minChunkZ; z <= maxChunkZ; z++) {
-                    chunks.Add(new Vector2Int(x, z));
+                for (int y = minChunkY; y <= maxChunkY; y++) {
+                    for (int z = minChunkZ; z <= maxChunkZ; z++) {
+                        chunks.Add(new Vector3Int(x, y, z));
+                    }
                 }
             }
 
             chunks.Sort(new ChunkComparer(centerChunk));
 
-            foreach (Vector2Int chunkPos in chunks) {
+            foreach (Vector3Int chunkPos in chunks) {
 
-                Vector2Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y);
-                Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y];
+                Vector3Int normalizedChunkPos = HelperFunctions.NormalizeChunkPos(this, chunkPos.x, chunkPos.y, chunkPos.z);
+                Chunk chunk = this.chunks[normalizedChunkPos.x, normalizedChunkPos.y, normalizedChunkPos.z];
 
                 if (chunk == null) {
                     chunk = new Chunk(this, chunkPos, normalizedChunkPos);
@@ -232,35 +242,91 @@ public class Planet : MonoBehaviour {
             Chunk chunk = (Chunk)obj;
             chunk.Popuplate();
 
-            Chunk upChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.up);
-            if (upChunk != null && upChunk.stage >= ChunkStage.Populated) {
-                Chunk rightChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.right);
+            bool topLayer = chunk.normalizedPos.y == chunk.planet.PlanetHeightInChunks - 1;
+            bool bottomLayer = chunk.normalizedPos.y == 0;
+
+            Chunk frontChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector3Int.forward);
+            if (frontChunk != null && frontChunk.stage >= ChunkStage.Populated) {
+                Chunk rightChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector3Int.right);
                 if (rightChunk != null && rightChunk.stage >= ChunkStage.Populated) {
-                    if (chunk.planet.chunksToMesh.TryEnqueue(chunk)) {
-                        chunk.stage = ChunkStage.CreatingMesh;
-                        chunk.planet.createChunkMeshesWaitHandle.Set();
+                    if (topLayer) {
+                        if (chunk.planet.chunksToMesh.TryEnqueue(chunk)) {
+                            chunk.stage = ChunkStage.CreatingMesh;
+                            chunk.planet.createChunkMeshesWaitHandle.Set();
+                        }
+                    } else {
+                        Chunk upChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector3Int.up);
+                        if (upChunk != null && upChunk.stage >= ChunkStage.Populated) {
+                            if (chunk.planet.chunksToMesh.TryEnqueue(chunk)) {
+                                chunk.stage = ChunkStage.CreatingMesh;
+                                chunk.planet.createChunkMeshesWaitHandle.Set();
+                            }
+                        }
                     }
                 }
             }
 
-            Chunk leftChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.left);
+            Chunk leftChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector3Int.left);
             if (leftChunk != null && leftChunk.stage == ChunkStage.Populated) {
-                Chunk leftUpChunk = HelperFunctions.GetNeighboringChunk(leftChunk, Vector2Int.up);
-                if (leftUpChunk != null && leftUpChunk.stage >= ChunkStage.Populated) {
-                    if (leftChunk.planet.chunksToMesh.TryEnqueue(leftChunk)) {
-                        leftChunk.stage = ChunkStage.CreatingMesh;
-                        leftChunk.planet.createChunkMeshesWaitHandle.Set();
+                Chunk leftFrontChunk = HelperFunctions.GetNeighboringChunk(leftChunk, Vector3Int.forward);
+                if (leftFrontChunk != null && leftFrontChunk.stage >= ChunkStage.Populated) {
+                    if (topLayer) {
+                        if (leftChunk.planet.chunksToMesh.TryEnqueue(leftChunk)) {
+                            leftChunk.stage = ChunkStage.CreatingMesh;
+                            leftChunk.planet.createChunkMeshesWaitHandle.Set();
+                        }
+                    } else {
+                        Chunk leftTopChunk = HelperFunctions.GetNeighboringChunk(leftChunk, Vector3Int.up);
+                        if (leftTopChunk != null && leftTopChunk.stage >= ChunkStage.Populated) {
+                            if (leftChunk.planet.chunksToMesh.TryEnqueue(leftChunk)) {
+                                leftChunk.stage = ChunkStage.CreatingMesh;
+                                leftChunk.planet.createChunkMeshesWaitHandle.Set();
+                            }
+                        }
                     }
                 }
             }
 
-            Chunk downChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector2Int.down);
-            if (downChunk != null && downChunk.stage == ChunkStage.Populated) {
-                Chunk downRightChunk = HelperFunctions.GetNeighboringChunk(downChunk, Vector2Int.right);
-                if (downRightChunk != null && downRightChunk.stage >= ChunkStage.Populated) {
-                    if (downChunk.planet.chunksToMesh.TryEnqueue(downChunk)) {
-                        downChunk.stage = ChunkStage.CreatingMesh;
-                        downChunk.planet.createChunkMeshesWaitHandle.Set();
+            Chunk backChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector3Int.back);
+            if (backChunk != null && backChunk.stage == ChunkStage.Populated) {
+                Chunk backRightChunk = HelperFunctions.GetNeighboringChunk(backChunk, Vector3Int.right);
+                if (backRightChunk != null && backRightChunk.stage >= ChunkStage.Populated) {
+                    if (topLayer) {
+                        if (backChunk.planet.chunksToMesh.TryEnqueue(backChunk)) {
+                            backChunk.stage = ChunkStage.CreatingMesh;
+                            backChunk.planet.createChunkMeshesWaitHandle.Set();
+                        }
+                    } else {
+                        Chunk backTopChunk = HelperFunctions.GetNeighboringChunk(backChunk, Vector3Int.up);
+                        if (backTopChunk != null && backTopChunk.stage >= ChunkStage.Populated) {
+                            if (backChunk.planet.chunksToMesh.TryEnqueue(backChunk)) {
+                                backChunk.stage = ChunkStage.CreatingMesh;
+                                backChunk.planet.createChunkMeshesWaitHandle.Set();
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!bottomLayer) {
+                Chunk bottomChunk = HelperFunctions.GetNeighboringChunk(chunk, Vector3Int.down);
+                if (bottomChunk != null && bottomChunk.stage == ChunkStage.Populated) {
+                    Chunk bottomRightChunk = HelperFunctions.GetNeighboringChunk(bottomChunk, Vector3Int.right);
+                    if (bottomRightChunk != null && bottomRightChunk.stage >= ChunkStage.Populated) {
+                        if (topLayer) {
+                            if (bottomChunk.planet.chunksToMesh.TryEnqueue(bottomChunk)) {
+                                bottomChunk.stage = ChunkStage.CreatingMesh;
+                                bottomChunk.planet.createChunkMeshesWaitHandle.Set();
+                            }
+                        } else {
+                            Chunk bottomFrontChunk = HelperFunctions.GetNeighboringChunk(bottomChunk, Vector3Int.forward);
+                            if (bottomFrontChunk != null && bottomFrontChunk.stage >= ChunkStage.Populated) {
+                                if (bottomChunk.planet.chunksToMesh.TryEnqueue(bottomChunk)) {
+                                    bottomChunk.stage = ChunkStage.CreatingMesh;
+                                    bottomChunk.planet.createChunkMeshesWaitHandle.Set();
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -340,7 +406,7 @@ public class PlanetData {
     public int seed;
     public string name;
     public int sizeInChunks;
-    public Dictionary<SerializableVector2Int, ChunkData> modifiedChunks;
+    public Dictionary<SerializableVector3Int, ChunkData> modifiedChunks;
 
     public PlanetData(Planet planet) {
         try {
@@ -357,29 +423,32 @@ public class PlanetData {
 }
 
 [Serializable]
-public class SerializableVector2Int {
+public class SerializableVector3Int {
     public int x;
     public int y;
+    public int z;
 }
 
-public class ChunkComparer : IComparer<Vector2Int> {
+public class ChunkComparer : IComparer<Vector3Int> {
 
-    private Vector2Int chunkPos;
+    private Vector3Int chunkPos;
 
-    public ChunkComparer(Vector2Int chunkPos) {
+    public ChunkComparer(Vector3Int chunkPos) {
         this.chunkPos = chunkPos;
     }
 
-    int IComparer<Vector2Int>.Compare(Vector2Int chunkPos1, Vector2Int chunkPos2) {
+    int IComparer<Vector3Int>.Compare(Vector3Int chunkPos1, Vector3Int chunkPos2) {
 
         int dx1 = Mathf.Abs(this.chunkPos.x - chunkPos1.x);
-        int dz1 = Mathf.Abs(this.chunkPos.y - chunkPos1.y);
+        int dy1 = Mathf.Abs(this.chunkPos.y - chunkPos1.y);
+        int dz1 = Mathf.Abs(this.chunkPos.z - chunkPos1.z);
 
         int dx2 = Mathf.Abs(this.chunkPos.x - chunkPos2.x);
-        int dz2 = Mathf.Abs(this.chunkPos.y - chunkPos2.y);
+        int dy2 = Mathf.Abs(this.chunkPos.y - chunkPos2.y);
+        int dz2 = Mathf.Abs(this.chunkPos.z - chunkPos2.z);
 
-        int ring1 = Mathf.Max(dx1, dz1);
-        int ring2 = Mathf.Max(dx2, dz2);
+        int ring1 = Mathf.Max(dx1, dy1, dz1);
+        int ring2 = Mathf.Max(dx2, dy2, dz2);
 
         if (ring1 > ring2) {
             return 1;
@@ -387,8 +456,8 @@ public class ChunkComparer : IComparer<Vector2Int> {
             return -1;
         } else {
 
-            int d1 = dx1 + dz1;
-            int d2 = dx2 + dz2;
+            int d1 = dx1 + dy1 + dz1;
+            int d2 = dx2 + dy2 + dz2;
 
             if (d1 > d2) {
                 return 1;
@@ -403,7 +472,7 @@ public class ChunkComparer : IComparer<Vector2Int> {
 
 public class ChunkQueue {
     readonly List<Chunk> queue = new();
-    readonly HashSet<Vector2Int> set = new();
+    readonly HashSet<Vector3Int> set = new();
     readonly object lockObject = new();
 
     public int Count {

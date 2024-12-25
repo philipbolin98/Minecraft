@@ -22,7 +22,7 @@ public class StructureGenerator : MonoBehaviour {
         }
     }
 
-    public void GenerateStructures(Chunk chunkToModify, Vector2Int chunkPos) {
+    public void GenerateStructures(Chunk chunkToModify, Vector3Int chunkPos) {
         try {
 
             Structure tree = this.StructureMap[StructureID.OakTree];
@@ -31,7 +31,7 @@ public class StructureGenerator : MonoBehaviour {
                 for (int z = 0; z < Chunk.ChunkSize; z++) {
 
                     int blockXInPlanet = chunkPos.x * Chunk.ChunkSize + x;
-                    int blockZInPlanet = chunkPos.y * Chunk.ChunkSize + z;
+                    int blockZInPlanet = chunkPos.z * Chunk.ChunkSize + z;
 
                     float treeValue = FastNoise.GetNoise(blockXInPlanet * 256, blockZInPlanet * 256);
                     treeValue = (treeValue + 1) / 2;
@@ -68,7 +68,7 @@ public class StructureGenerator : MonoBehaviour {
                 
                 Vector3Int blockPosInPlanet = HelperFunctions.NormalizeBlockPos(blockXInPlanet + block.Item1.x, terrainHeight + block.Item1.y, blockZInPlanet + block.Item1.z, this.planet.PlanetSizeInVoxels);
 
-                if (blockPosInPlanet.y < this.planet.WorldHeight && blockPosInPlanet.x >= minChunkX && blockPosInPlanet.x <= maxChunkX && blockPosInPlanet.z >= minChunkZ && blockPosInPlanet.z <= maxChunkZ) {
+                if (blockPosInPlanet.y < this.planet.PlanetHeightInVoxels && blockPosInPlanet.x >= minChunkX && blockPosInPlanet.x <= maxChunkX && blockPosInPlanet.z >= minChunkZ && blockPosInPlanet.z <= maxChunkZ) {
 
                     Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet, Chunk.ChunkSize);
                     BlockID currentBlockID = chunkToModify.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z];

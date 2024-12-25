@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Chunk {
 
-    public static readonly int ChunkSize = 16;
+    public static readonly int ChunkSize = 32;
 
     public static readonly Vector2Int[] NeighboringChunks = new Vector2Int[8]{
         new Vector2Int(-1, 1),
@@ -21,9 +21,9 @@ public class Chunk {
     public MeshRenderer meshRenderer;
     public Mesh mesh = new();
     public GameObject gameObject;
-    public Vector2Int pos;
-    public Vector2Int normalizedPos;
-    public Vector2Int normalizedPosInBlocks;
+    public Vector3Int pos;
+    public Vector3Int normalizedPos;
+    public Vector3Int normalizedPosInBlocks;
     public Planet planet;
     public ChunkData data;
 
@@ -44,7 +44,7 @@ public class Chunk {
     /// <param name="planet"></param>
     /// <param name="pos"></param>
     /// <param name="normalizedPos"></param>
-    public Chunk(Planet planet, Vector2Int pos, Vector2Int normalizedPos, ChunkData data = null) {
+    public Chunk(Planet planet, Vector3Int pos, Vector3Int normalizedPos, ChunkData data = null) {
         try {
 
             this.pos = pos;
@@ -52,9 +52,9 @@ public class Chunk {
             this.normalizedPosInBlocks = normalizedPos * ChunkSize;
             this.planet = planet;
 
-            this.data = data != null ? data : new ChunkData(planet);
+            this.data = data != null ? data : new ChunkData();
 
-            planet.chunks[normalizedPos.x, normalizedPos.y] = this;
+            planet.chunks[normalizedPos.x, normalizedPos.y, normalizedPos.z] = this;
 
             this.materials[0] = planet.material;
             this.materials[1] = planet.waterMaterial;
@@ -77,8 +77,8 @@ public class Chunk {
                 }
             }
 
-            this.planet.structureGenerator.GenerateStructures(this, this.normalizedPos);
-            this.GenerateStructuresInNeighboringChunks();
+            //this.planet.structureGenerator.GenerateStructures(this, this.normalizedPos);
+            //this.GenerateStructuresInNeighboringChunks();
             this.stage = ChunkStage.Populated;
 
         } catch (Exception ex) {
@@ -89,9 +89,9 @@ public class Chunk {
     public void GenerateStructuresInNeighboringChunks() {
         try {
 
-            foreach (Vector2Int offset in NeighboringChunks) {
-                Vector2Int chunkPos = HelperFunctions.NormalizeChunkPos(this.planet, this.normalizedPos + offset);
-                this.planet.structureGenerator.GenerateStructures(this, chunkPos);
+            foreach (Vector3Int offset in NeighboringChunks) {
+                Vector3Int chunkPos = HelperFunctions.NormalizeChunkPos(this.planet, this.normalizedPos + offset);
+                //this.planet.structureGenerator.GenerateStructures(this, chunkPos);
             }
 
         } catch (Exception ex) {
@@ -122,8 +122,8 @@ public class Chunk {
 
             ClearMeshData();
 
-            for (int y = 0; y < this.planet.WorldHeight; y++) {
-                for (int x = 0; x < ChunkSize; x++) {
+            for (int x = 0; x < ChunkSize; x++) {
+                for (int y = 0; y < ChunkSize; y++) {
                     for (int z = 0; z < ChunkSize; z++) {
                         AddVoxelDataToChunk(x, y, z);
                     }
@@ -159,7 +159,7 @@ public class Chunk {
 
                 if (neighborPosInChunk.x == ChunkSize) {
 
-                    Chunk neighborChunk = this.normalizedPos.x == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[0, this.normalizedPos.y] : this.planet.chunks[this.normalizedPos.x + 1, this.normalizedPos.y];
+                    Chunk neighborChunk = this.normalizedPos.x == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[0, this.normalizedPos.y, this.normalizedPos.z] : this.planet.chunks[this.normalizedPos.x + 1, this.normalizedPos.y, this.normalizedPos.z];
 
                     if (neighborChunk == null) {
                         continue;
@@ -169,17 +169,30 @@ public class Chunk {
 
                 } else if (neighborPosInChunk.z == ChunkSize) {
 
-                    Chunk neighborChunk = this.normalizedPos.y == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[this.normalizedPos.x, 0] : this.planet.chunks[this.normalizedPos.x, this.normalizedPos.y + 1];
+                    Chunk neighborChunk = this.normalizedPos.z == this.planet.PlanetSizeInChunks - 1 ? this.planet.chunks[this.normalizedPos.x, this.normalizedPos.y, 0] : this.planet.chunks[this.normalizedPos.x, this.normalizedPos.y, this.normalizedPos.z + 1];
 
                     if (neighborChunk == null) {
                         continue;
                     }
 
                     neighborBlockID = neighborChunk.data.blocks[neighborPosInChunk.x, neighborPosInChunk.y, 0];
+                    
+                } else if (neighborPosInChunk.y == ChunkSize) {
 
-                } else if (neighborPosInChunk.y == this.planet.WorldHeight) {
+                    if (this.normalizedPos.y == this.planet.PlanetHeightInChunks - 1) {
 
-                    neighborBlockID = BlockID.Air;
+                        neighborBlockID = BlockID.Air;
+
+                    } else {
+
+                        Chunk neighborChunk = this.planet.chunks[this.normalizedPos.x, this.normalizedPos.y + 1, this.normalizedPos.z];
+
+                        if (neighborChunk == null) {
+                            continue;
+                        }
+
+                        neighborBlockID = neighborChunk.data.blocks[neighborPosInChunk.x, 0, neighborPosInChunk.z];
+                    }
 
                 } else {
 
@@ -361,8 +374,8 @@ public class Chunk {
                 this.meshRenderer = gameObject.GetComponent<MeshRenderer>();
 
                 this.gameObject.transform.SetParent(planet.gameObject.transform);
-                this.gameObject.transform.position = new Vector3(this.pos.x * ChunkSize, 0, this.pos.y * ChunkSize);
-                this.gameObject.name = $"Chunk {this.normalizedPos.x}, {this.normalizedPos.y}";
+                this.gameObject.transform.position = new Vector3(this.pos.x * ChunkSize, this.pos.y * ChunkSize, this.pos.z * ChunkSize);
+                this.gameObject.name = $"Chunk {this.normalizedPos.x}, {this.normalizedPos.y}, {this.normalizedPos.z}";
                 this.gameObject.SetActive(true);
 
                 this.CreateMesh();
@@ -382,10 +395,10 @@ public class ChunkData {
     [HideInInspector]
     public BlockID[,,] blocks;
 
-    public ChunkData(Planet planet) {
+    public ChunkData() {
         try {
 
-            this.blocks = new BlockID[Chunk.ChunkSize, planet.WorldHeight, Chunk.ChunkSize];
+            this.blocks = new BlockID[Chunk.ChunkSize, Chunk.ChunkSize, Chunk.ChunkSize];
 
         } catch (Exception ex) {
             Debug.LogError("Error in ChunkData Constructor: " + ex.Message);

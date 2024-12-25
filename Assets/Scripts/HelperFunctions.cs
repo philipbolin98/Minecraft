@@ -9,17 +9,18 @@ public static class HelperFunctions {
     /// <param name="blockX"></param>
     /// <param name="blockZ"></param>
     /// <returns></returns>
-    public static Vector2Int GetChunkPosFromBlockPos(int blockX, int blockZ) {
+    public static Vector3Int GetChunkPosFromBlockPos(int blockX, int blockY, int blockZ) {
 		try {
 
             int chunkX = Mathf.FloorToInt(blockX / Chunk.ChunkSize);
+            int chunkY = Mathf.FloorToInt(blockY / Chunk.ChunkSize);
             int chunkZ = Mathf.FloorToInt(blockZ / Chunk.ChunkSize);
 
-            return new Vector2Int(chunkX, chunkZ);
+            return new Vector3Int(chunkX, chunkY, chunkZ);
 
 		} catch (Exception ex) {
             Debug.LogError("Error in HelperFunctions GetChunkPosFromBlockPos: " + ex.Message);
-            return new Vector2Int();
+            return new Vector3Int();
         }
 	}
 
@@ -28,6 +29,10 @@ public static class HelperFunctions {
 
             if (x < 0 || x >= maxVal) {
                 x = (int)Modulo(x, maxVal);
+            }
+
+            if (y < 0 || y >= maxVal) {
+                y = (int)Modulo(y, maxVal);
             }
 
             if (z < 0 || z >= maxVal) {
@@ -59,7 +64,7 @@ public static class HelperFunctions {
     /// <param name="x"></param>
     /// <param name="z"></param>
     /// <returns></returns>
-    public static Vector2Int NormalizeChunkPos(Planet planet, int x, int z) {
+    public static Vector3Int NormalizeChunkPos(Planet planet, int x, int y, int z) {
         try {
 
             if (x < 0 || x >= planet.PlanetSizeInChunks) {
@@ -70,11 +75,11 @@ public static class HelperFunctions {
                 z = (int)Modulo(z, planet.PlanetSizeInChunks);
             }
 
-            return new Vector2Int(x, z);
+            return new Vector3Int(x, y, z);
 
         } catch (Exception ex) {
             Debug.LogError("Error in HelperFunctions NormalizeChunkPos: " + ex.Message);
-            return new Vector2Int();
+            return new Vector3Int();
         }
     }
 
@@ -83,15 +88,8 @@ public static class HelperFunctions {
     /// </summary>
     /// <param name="chunkPos"></param>
     /// <returns></returns>
-    public static Vector2Int NormalizeChunkPos(Planet planet, Vector2Int chunkPos) {
-        try {
-
-            return NormalizeChunkPos(planet, chunkPos.x, chunkPos.y);
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in HelperFunctions NormalizeChunkPos: " + ex.Message);
-            return new Vector2Int();
-        }
+    public static Vector3Int NormalizeChunkPos(Planet planet, Vector3Int chunkPos) {
+        return NormalizeChunkPos(planet, chunkPos.x, chunkPos.y, chunkPos.z);
     }
 
     /// <summary>
@@ -169,21 +167,23 @@ public static class HelperFunctions {
 
             Vector3Int normalizedBlockPos = NormalizeBlockPos(blockX, blockY, blockZ, planet.PlanetSizeInVoxels);
             blockX = normalizedBlockPos.x;
+            blockY = normalizedBlockPos.y;
             blockZ = normalizedBlockPos.z;
 
-            Vector2Int chunkPos = GetChunkPosFromBlockPos(blockX, blockZ);
-            chunkPos = NormalizeChunkPos(planet, chunkPos.x, chunkPos.y);
+            Vector3Int chunkPos = GetChunkPosFromBlockPos(blockX, blockY, blockZ);
+            chunkPos = NormalizeChunkPos(planet, chunkPos.x, chunkPos.y, chunkPos.z);
 
-            Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
+            Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y, chunkPos.z];
 
             if (chunk == null || chunk.stage == ChunkStage.Null) {
                 return BlockID.Air;
             }
 
             int blockXInChunk = blockX % Chunk.ChunkSize;
+            int blockYInChunk = blockY % Chunk.ChunkSize;
             int blockZInChunk = blockZ % Chunk.ChunkSize;
 
-            return chunk.data.blocks[blockXInChunk, blockY, blockZInChunk];
+            return chunk.data.blocks[blockXInChunk, blockYInChunk, blockZInChunk];
 
         } catch (Exception ex) {
             Debug.LogError("Error in HelperFunctions GetBlockID: " + ex.Message);
@@ -202,7 +202,7 @@ public static class HelperFunctions {
     public static bool IsBlockInPlanet(Planet planet, int y) {
         try {
 
-            return y >= 0 && y < planet.WorldHeight;
+            return y >= 0 && y < planet.PlanetHeightInVoxels;
 
         } catch (Exception ex) {
             Debug.LogError("Error in HelperFunctions IsBlockInPlanet: " + ex.Message);
@@ -218,14 +218,7 @@ public static class HelperFunctions {
     /// <param name="z"></param>
     /// <returns></returns>
     public static bool IsBlockInChunk(Planet planet, int x, int y, int z) {
-        try {
-
-            return x >= 0 && x < Chunk.ChunkSize && y >= 0 && y < planet.WorldHeight && z >= 0 && z < Chunk.ChunkSize;
-
-        } catch (Exception ex) {
-            Debug.LogError("Error in HelperFunctions IsBlockInChunk: " + ex.Message);
-            return false;
-        }
+        return x >= 0 && x < Chunk.ChunkSize && y >= 0 && y < Chunk.ChunkSize && z >= 0 && z < Chunk.ChunkSize;
     }
 
     public static Chunk GetChunkFromBlockPos(Planet planet, Vector3Int blockPosInPlanet) {
@@ -236,8 +229,8 @@ public static class HelperFunctions {
             }
 
             Vector3Int normalizedBlockPos = NormalizeBlockPos(blockPosInPlanet.x, blockPosInPlanet.y, blockPosInPlanet.z, planet.PlanetSizeInVoxels);
-            Vector2Int chunkPos = GetChunkPosFromBlockPos(normalizedBlockPos.x, normalizedBlockPos.z);
-            Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y];
+            Vector3Int chunkPos = GetChunkPosFromBlockPos(normalizedBlockPos.x, normalizedBlockPos.y, normalizedBlockPos.z);
+            Chunk chunk = planet.chunks[chunkPos.x, chunkPos.y, chunkPos.z];
             return chunk;
 
         } catch (Exception ex) {
@@ -246,11 +239,16 @@ public static class HelperFunctions {
         }
     }
 
-    public static Chunk GetNeighboringChunk(Chunk chunk, Vector2Int offset) {
+    public static Chunk GetNeighboringChunk(Chunk chunk, Vector3Int offset) {
         try {
 
-            Vector2Int neighborPos = NormalizeChunkPos(chunk.planet, chunk.normalizedPos + offset);
-            Chunk neighborChunk = chunk.planet.chunks[neighborPos.x, neighborPos.y];
+            Vector3Int neighborPos = NormalizeChunkPos(chunk.planet, chunk.normalizedPos + offset);
+
+            if (neighborPos.y >= chunk.planet.PlanetHeightInChunks) {
+                return null;
+            }
+
+            Chunk neighborChunk = chunk.planet.chunks[neighborPos.x, neighborPos.y, neighborPos.z];
             return neighborChunk;
 
         } catch (Exception ex) {
