@@ -60,15 +60,17 @@ public class StructureGenerator : MonoBehaviour {
         try {
 
             int minChunkX = chunkToModify.normalizedPos.x * Chunk.ChunkSize;
-            int minChunkZ = chunkToModify.normalizedPos.y * Chunk.ChunkSize;
+            int minChunkY = chunkToModify.normalizedPos.y * Chunk.ChunkSize;
+            int minChunkZ = chunkToModify.normalizedPos.z * Chunk.ChunkSize;
             int maxChunkX = minChunkX + Chunk.ChunkSize - 1;
+            int maxChunkY = minChunkY + Chunk.ChunkSize - 1;
             int maxChunkZ = minChunkZ + Chunk.ChunkSize - 1;
 
             foreach (Tuple<Vector3Int, BlockID> block in structure.blocks) {
                 
                 Vector3Int blockPosInPlanet = HelperFunctions.NormalizeBlockPos(blockXInPlanet + block.Item1.x, terrainHeight + block.Item1.y, blockZInPlanet + block.Item1.z, this.planet.PlanetSizeInVoxels);
 
-                if (blockPosInPlanet.y < this.planet.PlanetHeightInVoxels && blockPosInPlanet.x >= minChunkX && blockPosInPlanet.x <= maxChunkX && blockPosInPlanet.z >= minChunkZ && blockPosInPlanet.z <= maxChunkZ) {
+                if (blockPosInPlanet.y >= minChunkY && blockPosInPlanet.y <= maxChunkY && blockPosInPlanet.x >= minChunkX && blockPosInPlanet.x <= maxChunkX && blockPosInPlanet.z >= minChunkZ && blockPosInPlanet.z <= maxChunkZ) {
 
                     Vector3Int blockPosInChunk = HelperFunctions.NormalizeBlockPos(blockPosInPlanet, Chunk.ChunkSize);
                     BlockID currentBlockID = chunkToModify.data.blocks[blockPosInChunk.x, blockPosInChunk.y, blockPosInChunk.z];

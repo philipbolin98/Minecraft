@@ -426,6 +426,7 @@ public class Player : MonoBehaviour {
 
             int halfPlanetSize = this.planet.PlanetSizeInVoxels / 2;
             float x = HelperFunctions.Modulo(this.currentPosition.x, this.planet.PlanetSizeInVoxels);
+            float y = this.currentPosition.y;
             float z = HelperFunctions.Modulo(this.currentPosition.z, this.planet.PlanetSizeInVoxels);
 
             if (x >= halfPlanetSize) {
@@ -436,12 +437,13 @@ public class Player : MonoBehaviour {
                 z -= this.planet.PlanetSizeInVoxels;
             }
 
-            Vector3 playerPos = new Vector3(x, this.currentPosition.y, z);
+            Vector3 playerPos = new Vector3(x, y, z);
             playerBlockCoordsUI.text = playerPos.ToString();
 
             int chunkX = Mathf.FloorToInt(x / Chunk.ChunkSize);
+            int chunkY = Mathf.FloorToInt(y / Chunk.ChunkSize);
             int chunkZ = Mathf.FloorToInt(z / Chunk.ChunkSize);
-            Vector2Int chunkPos = new Vector2Int(chunkX, chunkZ);
+            Vector3Int chunkPos = new Vector3Int(chunkX, chunkY, chunkZ);
 
             playerChunkCoordsUI.text = chunkPos.ToString();
 

@@ -6,15 +6,35 @@ public class Chunk {
 
     public static readonly int ChunkSize = 32;
 
-    public static readonly Vector2Int[] NeighboringChunks = new Vector2Int[8]{
-        new Vector2Int(-1, 1),
-        new Vector2Int(0, 1),
-        new Vector2Int(1, 1),
-        new Vector2Int(1, 0),
-        new Vector2Int(1, -1),
-        new Vector2Int(0, -1),
-        new Vector2Int(-1, -1),
-        new Vector2Int(-1, 0)
+    public static readonly Vector3Int[] NeighboringChunks = new Vector3Int[26]{
+        new(-1, -1, -1),
+        new(-1, -1, 0),
+        new(-1, -1, 1),
+        new(0, -1, 1),
+        new(1, -1, 1),
+        new(1, -1, 0),
+        new(1, -1, -1),
+        new(0, -1, -1),
+        new(0, -1, 0),
+
+        new(-1, 0, -1),
+        new(-1, 0, 0),
+        new(-1, 0, 1),
+        new(0, 0, 1),
+        new(1, 0, 1),
+        new(1, 0, 0),
+        new(1, 0, -1),
+        new(0, 0, -1),
+
+        new(-1, 1, -1),
+        new(-1, 1, 0),
+        new(-1, 1, 1),
+        new(0, 1, 1),
+        new(1, 1, 1),
+        new(1, 1, 0),
+        new(1, 1, -1),
+        new(0, 1, -1),
+        new(0, 1, 0)
     };
 
     public MeshFilter meshFilter;
@@ -71,15 +91,19 @@ public class Chunk {
     public void Popuplate() {
         try {
 
+            //System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+
             for (int x = 0; x < ChunkSize; x++) {
                 for (int z = 0; z < ChunkSize; z++) {
                     this.planet.terrainGenerator.GenerateTerrain(this, x, z);
                 }
             }
 
-            //this.planet.structureGenerator.GenerateStructures(this, this.normalizedPos);
-            //this.GenerateStructuresInNeighboringChunks();
+            this.planet.structureGenerator.GenerateStructures(this, this.normalizedPos);
+            this.GenerateStructuresInNeighboringChunks();
             this.stage = ChunkStage.Populated;
+
+            //Debug.Log($"Populating chunk: {watch.Elapsed.TotalSeconds}");
 
         } catch (Exception ex) {
             Debug.LogError("Error in Chunk Popuplate: " + ex.Message);
@@ -91,7 +115,7 @@ public class Chunk {
 
             foreach (Vector3Int offset in NeighboringChunks) {
                 Vector3Int chunkPos = HelperFunctions.NormalizeChunkPos(this.planet, this.normalizedPos + offset);
-                //this.planet.structureGenerator.GenerateStructures(this, chunkPos);
+                this.planet.structureGenerator.GenerateStructures(this, chunkPos);
             }
 
         } catch (Exception ex) {
@@ -120,6 +144,8 @@ public class Chunk {
     public void CreateMeshData() {
         try {
 
+            //System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+
             ClearMeshData();
 
             for (int x = 0; x < ChunkSize; x++) {
@@ -131,6 +157,8 @@ public class Chunk {
             }
 
             this.stage = ChunkStage.MeshCreated;
+
+            //Debug.Log($"Meshing chunk: {watch.Elapsed.TotalSeconds}");
 
         } catch (Exception ex) {
             Debug.LogError("Error in function Chunk.CreateMeshData: " + ex.Message);

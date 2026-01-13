@@ -3,6 +3,7 @@ using System.Threading;
 using UnityEngine;
 using System;
 using System.Collections.Concurrent;
+using diagnostics = System.Diagnostics;
 
 public class Planet : MonoBehaviour {
 
@@ -150,6 +151,8 @@ public class Planet : MonoBehaviour {
             int minChunkZ = centerChunk.z - Settings.gameSettings.renderDistance;
             int maxChunkZ = centerChunk.z + Settings.gameSettings.renderDistance;
 
+            //diagnostics.Stopwatch watch = diagnostics.Stopwatch.StartNew();
+
             for (int i = this.activeChunks.Count - 1; i >= 0; i--) {
 
                 Chunk chunk = this.activeChunks[i];
@@ -160,6 +163,9 @@ public class Planet : MonoBehaviour {
                     this.activeChunks.RemoveAt(i);
                 }
             }
+
+            //Debug.Log($"Disabling out of view chunks: {watch.Elapsed.TotalSeconds}");
+            //watch.Restart();
 
             List<Vector3Int> chunks = new();
 
@@ -172,7 +178,13 @@ public class Planet : MonoBehaviour {
                 }
             }
 
+            //Debug.Log($"Adding coords to chunks list: {watch.Elapsed.TotalSeconds}");
+            //watch.Restart();
+
             chunks.Sort(new ChunkComparer(centerChunk));
+
+            //Debug.Log($"Sorting chunks list: {watch.Elapsed.TotalSeconds}");
+            //watch.Restart();
 
             foreach (Vector3Int chunkPos in chunks) {
 
@@ -194,7 +206,9 @@ public class Planet : MonoBehaviour {
                     chunksToRenderQueue.Enqueue(chunk);
                 }
             }
-            
+
+            //Debug.Log($"Enabling chunks in view: {watch.Elapsed.TotalSeconds}");
+
         } catch (Exception ex) {
             Debug.LogError("Error in Planet CheckRenderDistance: " + ex.Message);
         }
